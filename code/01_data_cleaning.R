@@ -135,7 +135,7 @@ table(data$otr_vimr) # pork
 
 ##-----------------------------------------------------------------------------
 ## PCR confirmed cases
-table(data$rsltlc) # 1 = positive, 2 = negative, 3 = not analysed yet
+table(data$rsltlc) # 1 = positive, 2 = negative, 3 = not analysed yet; only positive cases are retained in longitudinal part of the study
 
 table(data$rsltlc[data$sexe==2 & (data$cathgr==1|data$cathgr==2)])
 ## Females +12y (N = 165?)
