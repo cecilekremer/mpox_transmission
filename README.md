@@ -4,6 +4,8 @@
 
 * Duration of hospitalisations: individual characteristics? clinical presentation?
 
+* Infection severity: higher virulence and case fatality rate than Clade IIb, but lower than Clade Ia
+
 * Serial interval: stratified by attributes such as transmission route, age, gender
 
 * Reconstruction of transmission tree 
