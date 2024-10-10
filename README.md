@@ -1,6 +1,6 @@
 # Open questions
 
-* Establish the presence of sexual transmission / other transmission routes: location of lesions
+* Establish the presence of sexual transmission / other transmission routes: location of lesions, modes of exposure (contact w/ case, animal reservoir)
 
 * Duration of hospitalisations: individual characteristics? clinical presentation?
 
