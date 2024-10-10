@@ -6,6 +6,6 @@
 
 * Serial interval: stratified by attributes such as transmission route, age, gender
 
-* Reconstruction of transmission tree / sequencing data (https://github.com/inrb-labgenpath/Mpox_sequencing_Kamituga)?
+* Reconstruction of transmission tree 
 
 * Pregnancy outcomes: vertical transmission?
