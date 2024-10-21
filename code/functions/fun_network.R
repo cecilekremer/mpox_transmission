@@ -24,7 +24,9 @@ FindCycles = function(g) {
 setup_network <- function(case.ids, # ordered case IDs
                           cluster, # cluster IDs ordered by case ID
                           contact.list, 
+                          transm.list,
                           infector.mat, # initial infector-infectee matrix
+                          transm.route, # transmission routes for infector-intectee matrix
                           symptom.onset, # symptom onset dates by ordered case ID
                           helper.date, # date of notification / last present at collectivity - used to impute symptom onset dates if missing
                           min.si = 5, # absolute value of the max. allowed negative serial interval
@@ -72,12 +74,19 @@ setup_network <- function(case.ids, # ordered case IDs
   
   # Constrain negative serial interval to be max -X days
   inf.mat <- matrix(nrow = NCases, ncol = NCases)
+  trans.mat <- matrix(nrow = NCases, ncol = NCases)
   for(i in 1:NCases){
     for(j in 1:NCases){
       if(i == j){
         inf.mat[i, j] <- 0
       }else{
         inf.mat[i, j] <- ifelse(j %in% infector.mat[i, ], 1, 0)
+      }
+      
+      if(inf.mat[i, j] == 1){
+        id <- j
+        p <- which(PossibleInfector[i, ] == j)
+        trans.mat[i, j] <- TransmissionRoutes[i, p]
       }
     }
   }
@@ -95,12 +104,14 @@ setup_network <- function(case.ids, # ordered case IDs
     }
   }
   
-  # Update infector matrix
+  # Update infector and transmission route matrix
   vi.list <- rep(list(NULL), NCases)
+  transm.list <- rep(list(NULL), NCases)
   for(i in case.ids){
     for(j in case.ids){
       if(inf.mat[i, j] == 1){
         vi.list[[i]] <- c(vi.list[[i]], case.ids[j])
+        transm.list[[i]] <- c(transm.list[[i]], trans.mat[i, j])
       }
     }
     # all cases possible index
@@ -193,6 +204,16 @@ setup_network <- function(case.ids, # ordered case IDs
   ###-----------------------------------------------------------------------------------------------
   
   infector.mat.final <- PossibleInfector2
+  transm.mat.final <- matrix(nrow = NCases, ncol = NCases)
+  for(i in 1:NCases){
+    for(j in 1:NCases){
+      if(i == j){
+        transm.mat.final[i, j] <- NA
+      }else{
+        transm.mat.final[i, j] <- ifelse(j %in% infector.mat.final[i, ], trans.mat[i, j], NA)
+      }
+    }
+  }
   
   IsNotContributorToLikelorg <- c(which(infector.mat.final[, 1] == 0)) 
   IsContributorToLikelorg <- case.ids[!case.ids%in%IsNotContributorToLikelorg]
@@ -226,7 +247,17 @@ setup_network <- function(case.ids, # ordered case IDs
   IsContributorToLikel <- case.ids[Network != 0]
   IsNotContributorToLikel <- case.ids[!(case.ids %in% IsContributorToLikel)]
   
+  TransRoute <- c()
+  for(i in 1:NCases){
+    TransRoute[i] <- ifelse(Network[i] != 0, transm.mat.final[i, Network[i]], NA)
+  }
+  
+  if(NA %in% TransRoute[Network != 0]){
+    stop('no transmission route')
+  }
+  
   return(list(network = Network,
-              onset.times = Time))
+              onset.times = Time,
+              transm.route = TransRoute))
   
 }
