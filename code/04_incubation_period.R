@@ -1,0 +1,201 @@
+
+## Data needed --> symptom onset and last day of exposure
+
+## MCMC, at each iteration: 
+# Sample a date of infection for each confirmed case --> fixed to last day of exposure if known, otherwise based on travel history
+# Compute incubation period for each confirmed case
+# Sample value for distributional parameters
+# Compute likelihood of observing computed incubation periods given these parameters
+# Accept/reject parameters
+
+load('data/contact_data.RData')
+names(data.contact.clean); dim(data.contact.clean)
+
+data <- data.contact.clean
+
+##-----------------------------------------------------------------------
+## Exposure windows
+
+summary(as.Date(data$date)) # date of enquete
+
+# Dates of last contact
+data$contact1_lastcontact <- as.Date(data$date) - data$days_since_last_contact1
+data$contact2_lastcontact <- as.Date(data$date) - data$days_since_last_contact2
+data$contact3_lastcontact <- as.Date(data$date) - data$days_since_last_contact3
+data$contact4_lastcontact <- as.Date(data$date) - data$days_since_last_contact4
+
+# Exposure window defined as range of last contacts ?
+data <- data[!is.na(data$contact1_included) | !is.na(data$contact2_included) | !is.na(data$contact3_included) | !is.na(data$contact4_included), ]
+dim(data)
+
+library(dplyr)
+data <- data %>%
+  group_by(ID) %>%
+  mutate(
+    # exposure_lower = min(contact1_lastcontact, contact2_lastcontact, contact3_lastcontact, contact4_lastcontact, na.rm = T),
+    exposure_upper = max(contact1_lastcontact, contact2_lastcontact, contact3_lastcontact, contact4_lastcontact, na.rm = T)
+  )
+# Set lower bound to upper - 21 days
+data$exposure_lower <- data$exposure_upper - 21
+dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
+sum(data$exposure_upper >= data$symptom.onset, na.rm = T)
+
+# Only use cases with upper bound before symptom onset
+data <- data[!is.na(data$symptom.onset) & (data$exposure_upper < data$symptom.onset), ]
+dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
+
+data$exposureDuration <- as.numeric(data$exposure_upper - data$exposure_lower)
+summary(data$exposureDuration)
+head(data[is.na(data$exposureDuration), c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
+
+data <- data[!is.na(data$exposureDuration),]
+sum(data$exposureDuration == 0); sum(data$exposureDuration != 0)
+
+data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,100:104,111,112,128:130)]
+save(data.incubation, file = 'data/data_exposure.RData')
+
+# Dates in numeric format
+minDate <- min(data.incubation$symptom.onset, data.incubation$exposure_lower, data.incubation$exposure_upper)
+data.incubation$symptom.onset.num <- as.numeric(data.incubation$symptom.onset - minDate) + 1
+data.incubation$exposure.lower.num <- as.numeric(data.incubation$exposure_lower - minDate) + 1
+data.incubation$exposure.upper.num <- as.numeric(data.incubation$exposure_upper - minDate) + 1
+
+summary(data.incubation$exposureDuration)
+sum(data.incubation$exposureDuration > 0)
+sum(data.incubation$symptom.onset < data.incubation$exposure.upper.num)
+sum(data.incubation$symptom.onset < data.incubation$exposure.lower.num)
+
+# data.incubation$exposure.upper.num <- ifelse(data.incubation$exposure.upper.num >= data.incubation$symptom.onset.num,
+#                                              data.incubation$symptom.onset.num - 1, # set to one day before symptom onset
+#                                              data.incubation$exposure.upper.num)
+# head(data.incubation[data.incubation$exposure.lower.num >= data.incubation$symptom.onset.num,
+#                      c(1,2,12,19:24,17,18)])
+# data.incubation$exposure.lower.num <- ifelse(data.incubation$exposure.lower.num > data.incubation$exposure.upper.num,
+#                                              data.incubation$exposure.upper.num,
+#                                              data.incubation$exposure.lower.num
+# )
+
+
+data.stan <- data.incubation[data.incubation$exposureDuration > 0, ]
+dim(data.stan)
+
+##--------------------------------------------------------------------------
+## Estimate incubation period using MCMC
+## https://github.com/fmiura/MpxInc_2022/blob/main/src/1_StanModel_MPXinc.R
+
+library(patchwork)
+library(rstan)
+library(loo)
+library(tidyverse)#added
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores())
+
+# Input for Stan model
+input_data <- list(N = length(data.stan$exposure.lower.num),
+                   tStartExposure = data.stan$exposure.lower.num,
+                   tEndExposure = data.stan$exposure.upper.num,
+                   tSymptomOnset = data.stan$symptom.onset.num
+)
+
+# Stan model for different distributions
+distributions <- c("weibull", "gamma", "lognormal")
+code <- sprintf("
+  data{
+    int<lower=1> N;
+    vector[N] tStartExposure;
+    vector[N] tEndExposure;
+    vector[N] tSymptomOnset;
+  }
+  parameters{
+    real<lower=0> par[2];
+    vector<lower=0, upper=1>[N] uE;	// Uniform value for sampling between start and end exposure
+  }
+  transformed parameters{
+    vector[N] tE; 	// infection moment
+    tE = tStartExposure + uE .* (tEndExposure - tStartExposure);
+  }
+  model{
+    // Contribution to likelihood of incubation period
+    target += %s_lpdf(tSymptomOnset -  tE  | par[1], par[2]);
+  }
+  generated quantities {
+    // likelihood for calculation of looIC
+    vector[N] log_lik;
+    for (i in 1:N) {
+      log_lik[i] = %s_lpdf(tSymptomOnset[i] -  tE[i]  | par[1], par[2]);
+    }
+  }
+", distributions, distributions)
+names(code) <- distributions
+
+models <- mapply(stan_model, model_code = code)
+
+# Fit stan models
+fit <- mapply(sampling, models, list(input_data), iter = 10000, warmup = 3000, chain = 4)
+pos <- mapply(function(z) rstan::extract(z)$par, fit, SIMPLIFY = FALSE)
+
+# Summary of model fits
+means <- cbind(pos$weibull[,2]*gamma(1+1/pos$weibull[,1]),
+               pos$gamma[,1] / pos$gamma[,2],
+               exp(pos$lognormal[,1]+pos$lognormal[,2]^2/2))
+a_percentile <- c(0.025, 0.5, 0.975)
+res <- apply(means, 2, quantile, a_percentile)
+ll <- mapply(function(z) loo(extract_log_lik(z))$looic, fit)
+waic <- mapply(function(z) waic(extract_log_lik(z))$waic, fit)
+rbind(res, looIC=ll, WAIC=waic)
+
+cens_w_percentiles <- sapply(c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99), function(p) quantile(qweibull(p = p, shape = pos$weibull[,1], scale = pos$weibull[,2]), probs = c(0.025, 0.5, 0.975)))
+colnames(cens_w_percentiles) <- c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99)
+cens_g_percentiles <- sapply(c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99), function(p) quantile(qgamma(p = p, shape = pos$gamma[,1], rate = pos$gamma[,2]), probs = c(0.025, 0.5, 0.975)))
+colnames(cens_g_percentiles) <- c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99)
+cens_ln_percentiles <- sapply(c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99), function(p) quantile(qlnorm(p = p, meanlog = pos$lognormal[,1], sdlog= pos$lognormal[,2]), probs = c(0.025, 0.5, 0.975)))
+colnames(cens_ln_percentiles) <- c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99)
+
+# Plots
+#make data frames for visualization
+df <- data.frame(
+  #Take mean values to draw emprical CDF
+  inc_day = ((input_data$tSymptomOnset-input_data$tEndExposure)+(input_data$tSymptomOnset-input_data$tStartExposure))/2
+)
+x_plot <- seq(0,30,by=0.1)
+Gam_plot <- as.data.frame(list(dose= x_plot, 
+                               pred= sapply(x_plot, function(q) quantile(pgamma(q = q, shape = pos$gamma[,1], rate = pos$gamma[,2]), probs = c(0.5))),
+                               low = sapply(x_plot, function(q) quantile(pgamma(q = q, shape = pos$gamma[,1], rate = pos$gamma[,2]), probs = c(0.025))),
+                               upp = sapply(x_plot, function(q) quantile(pgamma(q = q, shape = pos$gamma[,1], rate = pos$gamma[,2]), probs = c(0.975)))
+))
+Wei_plot <- as.data.frame(list(dose= x_plot, 
+                               pred= sapply(x_plot, function(q) quantile(pweibull(q = q, shape = pos$weibull[,1], scale = pos$weibull[,2]), probs = c(0.5))),
+                               low = sapply(x_plot, function(q) quantile(pweibull(q = q, shape = pos$weibull[,1], scale = pos$weibull[,2]), probs = c(0.025))),
+                               upp = sapply(x_plot, function(q) quantile(pweibull(q = q, shape = pos$weibull[,1], scale = pos$weibull[,2]), probs = c(0.975)))
+))
+ln_plot <- as.data.frame(list(dose= x_plot, 
+                              pred= sapply(x_plot, function(q) quantile(plnorm(q = q, meanlog = pos$lognormal[,1], sdlog= pos$lognormal[,2]), probs = c(0.5))),
+                              low = sapply(x_plot, function(q) quantile(plnorm(q = q, meanlog = pos$lognormal[,1], sdlog= pos$lognormal[,2]), probs = c(0.025))),
+                              upp = sapply(x_plot, function(q) quantile(plnorm(q = q, meanlog = pos$lognormal[,1], sdlog= pos$lognormal[,2]), probs = c(0.975)))
+))
+library(ggplot2)
+gamma_ggplot <- ggplot(df, aes(x=inc_day)) +
+  stat_ecdf(geom = "step")+ 
+  xlim(c(0, 30))+
+  geom_line(data=Gam_plot, aes(x=x_plot, y=pred), color=RColorBrewer::brewer.pal(11, "RdBu")[11], size=1) +
+  geom_ribbon(data=Gam_plot, aes(x=x_plot,ymin=low,ymax=upp), fill = RColorBrewer::brewer.pal(11, "RdBu")[11], alpha=0.1) +
+  theme_bw(base_size = 24)+
+  labs(x="Incubation period (days)", y = "Proportion")+
+  ggtitle("Gamma")
+weibul_ggplot <- ggplot(df, aes(x=inc_day)) +
+  stat_ecdf(geom = "step")+ 
+  xlim(c(0, 30))+
+  geom_line(data=Wei_plot, aes(x=x_plot, y=pred), color=RColorBrewer::brewer.pal(11, "RdBu")[11], size=1) +
+  geom_ribbon(data=Wei_plot, aes(x=x_plot,ymin=low,ymax=upp), fill = RColorBrewer::brewer.pal(11, "RdBu")[11], alpha=0.1) +
+  theme_bw(base_size = 24)+
+  labs(x="Incubation period (days)", y = "Proportion")+
+  ggtitle("Weibull")
+lognorm_ggplot <- ggplot(df, aes(x=inc_day)) +
+  stat_ecdf(geom = "step")+ 
+  xlim(c(0, 30))+
+  geom_line(data=ln_plot, aes(x=x_plot, y=pred), color=RColorBrewer::brewer.pal(11, "RdBu")[11], size=1) +
+  geom_ribbon(data=ln_plot, aes(x=x_plot,ymin=low,ymax=upp), fill = RColorBrewer::brewer.pal(11, "RdBu")[11], alpha=0.1) +
+  theme_bw(base_size = 24)+
+  labs(x="Incubation period (days)", y = "Proportion")+
+  ggtitle("Lognormal")
+(lognorm_ggplot|gamma_ggplot|weibul_ggplot) + plot_annotation(tag_levels = 'A') #16inchi x 6 inchi

@@ -1,0 +1,232 @@
+
+###########################
+### FIND CYCLES
+# Function to find cycles in network
+FindCycles = function(g) {
+  Cycles = NULL
+  for(v1 in V(g)) {
+    if(degree(g, v1, mode="in") == 0) { next }
+    GoodNeighbors = neighbors(g, v1, mode="out")
+    GoodNeighbors = GoodNeighbors[GoodNeighbors > v1]
+    for(v2 in GoodNeighbors) {
+      TempCyc = lapply(all_simple_paths(g, v2,v1, mode="out"), function(p) c(v1,p))
+      TempCyc = TempCyc[sapply(TempCyc, min) == sapply(TempCyc, `[`, 1)]
+      Cycles  = c(Cycles, TempCyc)
+    }
+  }
+  Cycles
+}
+
+##############################
+### CREATE NETWORK
+# Function to set up a network based on symptom onset dates and contact info
+
+setup_network <- function(case.ids, # ordered case IDs
+                          cluster, # cluster IDs ordered by case ID
+                          contact.list, 
+                          infector.mat, # initial infector-infectee matrix
+                          symptom.onset, # symptom onset dates by ordered case ID
+                          helper.date, # date of notification / last present at collectivity - used to impute symptom onset dates if missing
+                          min.si = 5, # absolute value of the max. allowed negative serial interval
+                          max.si = 200 # suggestion of the max. positive serial interval (to assign index cases to clusters)
+){
+  
+  NCases <- length(unique(case.ids))
+  
+  # Sample missing symptom onset dates
+  minDate <- min(c(symptom.onset, helper.date), na.rm = T)-1
+  Time <- as.numeric(symptom.onset - minDate) # symptom onset
+  Time2 <- as.numeric(helper.date - minDate) # questionnaire
+  timeLapsed <- max(as.numeric(helper.date - symptom.onset), na.rm = T) # max. time between questionnaire and symptom onset
+  
+  for(i in case.ids){
+    
+    # if(is.na(Time[i]) && !is.na(contact.list[[i]][1])){
+    #   
+    #   contacts <- contact.list[[i]]
+    #   # if all onset times of contacts are also missing
+    #   if(length(contacts) == sum(is.na(Time[contacts]))){
+    #     minDate <- min(Time[cluster == cluster[i]], na.rm = T) - min.si
+    #     maxDate <- Time2[i]
+    #     Time[i] <- round(runif(1, minDate, maxDate))
+    #     if(Time[i] <= 0) Time[i] <- 1
+    #   }else{
+    #     minDate <- min(Time[contacts], na.rm = T) - min.si
+    #     maxDate <- Time2[i]
+    #     Time[i] <- round(runif(1, minDate, maxDate))
+    #     if(Time[i] <= 0) Time[i] <- 1
+    #   }
+    #   
+    # }else if(is.na(Time[i]) && is.na(contact.list[[i]][1])){
+    
+    if(is.na(Time[i])){
+      
+      # sample symptom onset times if no contact given
+      min.date <- helper.date[i] - timeLapsed
+      maxDate <- helper.date[i]
+      Time[i] <- as.numeric(as.Date(round(runif(1, min.date, maxDate))) - minDate)
+      
+    }
+    
+  }
+  
+  # Constrain negative serial interval to be max -X days
+  inf.mat <- matrix(nrow = NCases, ncol = NCases)
+  for(i in 1:NCases){
+    for(j in 1:NCases){
+      if(i == j){
+        inf.mat[i, j] <- 0
+      }else{
+        inf.mat[i, j] <- ifelse(j %in% infector.mat[i, ], 1, 0)
+      }
+    }
+  }
+  # adapt infector-infectee matrix based on possible serial intervals
+  time.mat <- matrix(nrow = NCases, ncol = NCases)
+  for(i in 1:NCases){
+    for(j in 1:NCases){
+      time.mat[i, j] <- Time[i] - Time[j]
+    }
+  }
+  # SI.mat <- inf.mat * time.mat
+  for(i in 1:NCases){
+    for(j in 1:NCases){
+      inf.mat[i, j] <- ifelse((time.mat[i ,j] < -min.si || time.mat[i, j] > max.si), 0, inf.mat[i, j])
+    }
+  }
+  
+  # Update infector matrix
+  vi.list <- rep(list(NULL), NCases)
+  for(i in case.ids){
+    for(j in case.ids){
+      if(inf.mat[i, j] == 1){
+        vi.list[[i]] <- c(vi.list[[i]], case.ids[j])
+      }
+    }
+    # all cases possible index
+    # vi.list[[i]] <- c(0, vi.list[[i]])
+  }
+  
+  PossibleInfector2 <- matrix(nrow = NCases, ncol = max(lengths(vi.list)))
+  for(i in 1:NCases){
+    if(!is.null(vi.list[[i]])){
+      PossibleInfector2[i, 1:lengths(vi.list)[i]] <- vi.list[[i]]
+    }else{
+      PossibleInfector2[i, 1] <- 0 # index case if no contacts
+    }
+  }
+  NPossibleInfector2 <- rowSums(!is.na(PossibleInfector2))
+  
+  ###-------------------------------------------------------------------------------------
+  ### Additional checks to avoid cycles
+  
+  if(!is.na(cluster)){
+    
+    ## Add cluster ID based on contacts for those that are missing
+    for(id in case.ids[is.na(cluster)]){
+      contacts <- PossibleInfector2[id, ]
+      clust.id <- cluster[contacts[!is.na(contacts)]]
+      if(length(unique(clust.id)) == 1){
+        cluster[case.ids[case.ids == id]] <- clust.id[1]
+      }else{stop()}
+    }
+    
+    ## For clusters with unknown index, randomly select one
+    for(c in unique(cluster)){
+      
+      if(!(0 %in% PossibleInfector2[case.ids[cluster == c], ])){
+        if(length(case.ids[cluster == c]) > 1){
+          temp <- c()
+          for(i in case.ids[cluster == c]){
+            for(j in case.ids[cluster == c]){
+              if(j %in% PossibleInfector2[i, ] & i %in% PossibleInfector2[j, ] & (Time[i]-Time[j]) %in% seq(-min.si, max.si, 1)){
+                temp <- c(temp, i, j)
+              }
+            }
+          }
+          if(!is.null(temp)){
+            ind <- sample(unique(temp), 1)
+            PossibleInfector2[ind, ] <- c(0, rep(NA, length(PossibleInfector2[ind, ]) - 1))
+          }
+        }else{ # if only one case in the cluster
+          id <- case.ids[cluster == c]
+          PossibleInfector2[id, ] <- c(0, rep(NA, length(PossibleInfector2[id, ]) - 1))
+        }
+      }
+    }
+    NPossibleInfector2    <- rowSums(!is.na(PossibleInfector2))
+    
+  }
+  
+  ## When 2 cases only contacted each other (i.e. pairs), randomly select index (both are possible based on SI constraint)
+  for(i in case.ids){
+    for(j in case.ids){
+      if((NPossibleInfector2[i] == 1 & NPossibleInfector2[j] == 1 &
+          PossibleInfector2[i, 1] == j & PossibleInfector2[j, 1] == i)[1]){
+        PossibleInfector2[sample(c(i,j), 1), 1] <- 0
+      }
+    }
+  }  
+  NPossibleInfector2    <- rowSums(!is.na(PossibleInfector2))
+  
+  ## In addition, when case i has only one contact, j, and j is definitely the infector (based on SI constraint) --> i should be removed from j's infector list
+  for(i in case.ids){
+    for(j in case.ids){
+      if(NPossibleInfector2[i] == 1 & PossibleInfector2[i, 1] == j & (i %in% PossibleInfector2[j, ])){
+        if((Time[i] - Time[j]) >= -min.si){ # sample infector if serial interval larger than negative constraint (presymptomatic transmission possible)
+          ind <- sample(c(i,j), 1)
+          if(ind == i){
+            PossibleInfector2[i, 1] <- 0
+          }else{
+            temp <- PossibleInfector2[j, ]
+            PossibleInfector2[j, ] <- c(temp[temp != case.ids[i]], NA)
+          }
+        }else{ # if t_i more than X days before t_j, i is infector (i.e. outside of serial interval constraint)
+          temp <- PossibleInfector2[i, ]
+          PossibleInfector2[i, ] <- c(0, rep(NA, length(PossibleInfector2[i, ])-1))
+        }
+      }
+    }
+  }
+  NPossibleInfector2    <- rowSums(!is.na(PossibleInfector2))
+  
+  ###-----------------------------------------------------------------------------------------------
+  
+  infector.mat.final <- PossibleInfector2
+  
+  IsNotContributorToLikelorg <- c(which(infector.mat.final[, 1] == 0)) 
+  IsContributorToLikelorg <- case.ids[!case.ids%in%IsNotContributorToLikelorg]
+  
+  ### Sample network
+  Network <- numeric(NCases)+0
+  Update <- IsContributorToLikelorg
+  
+  # Resample network until there are no cycles
+  n.cycles <- 1
+  n.try <- 1 # set limit on number of times to resample
+  # ptm = proc.time()
+  while(n.cycles > 0){
+    Draw <- round(runif(length(Update), min = 0.5, max = NPossibleInfector2[Update]+0.5))
+    for(i in 1:length(IsContributorToLikelorg)){
+      Network[Update[i]] <- infector.mat.final[Update[i], Draw[i]]
+    }
+    # AcceptedNetwork <Network
+    Infector <- Network[IsContributorToLikelorg]
+    Infectee <- case.ids[IsContributorToLikelorg]
+    
+    tree <- cbind(Infector, Infectee); tree <- tree[which(Infector != 0), ]
+    g <- graph_from_edgelist(tree)
+    n.cycles <- length(FindCycles(g))
+    # print(n.cycles)
+    n.try <- n.try + 1
+    if(n.try > 100000) stop()
+  }
+  # proc.time()-ptm
+  
+  IsContributorToLikel <- case.ids[Network != 0]
+  IsNotContributorToLikel <- case.ids[!(case.ids %in% IsContributorToLikel)]
+  
+  return(list(network = Network,
+              onset.times = Time))
+  
+}
