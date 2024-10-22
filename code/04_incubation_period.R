@@ -24,34 +24,38 @@ data$contact2_lastcontact <- as.Date(data$date) - data$days_since_last_contact2
 data$contact3_lastcontact <- as.Date(data$date) - data$days_since_last_contact3
 data$contact4_lastcontact <- as.Date(data$date) - data$days_since_last_contact4
 
-# Exposure window defined as range of last contacts ?
+# Exposure window defined as [SO - 21 days ; last contact in 21 days before SO]
 data <- data[!is.na(data$contact1_included) | !is.na(data$contact2_included) | !is.na(data$contact3_included) | !is.na(data$contact4_included), ]
+data <- data[!is.na(data$symptom.onset),]
 dim(data)
 
 library(dplyr)
 data <- data %>%
   group_by(ID) %>%
   mutate(
-    # exposure_lower = min(contact1_lastcontact, contact2_lastcontact, contact3_lastcontact, contact4_lastcontact, na.rm = T),
-    exposure_upper = max(contact1_lastcontact, contact2_lastcontact, contact3_lastcontact, contact4_lastcontact, na.rm = T)
+    # exposure_lower = as.Date(symptom.onset - 21),
+    exposure_lower = min(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - 21))], 
+                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - 21))], 
+                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - 21))], 
+                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - 21))], 
+                         na.rm = T),
+    exposure_upper = max(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - 21))], 
+                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - 21))], 
+                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - 21))], 
+                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - 21))], 
+                         na.rm = T)
   )
-# Set lower bound to upper - 21 days
-data$exposure_lower <- data$exposure_upper - 21
+data <- data[!is.infinite((data$exposure_upper)), ]
 dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
 sum(data$exposure_upper >= data$symptom.onset, na.rm = T)
-
-# Only use cases with upper bound before symptom onset
-data <- data[!is.na(data$symptom.onset) & (data$exposure_upper < data$symptom.onset), ]
-dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
+data$exposure_lower <- ifelse(data$exposure_lower == data$exposure_upper, as.Date(data$symptom.onset - 21), data$exposure_lower)
+data$exposure_lower <- as.Date(data$exposure_lower); summary(data$exposure_lower)
 
 data$exposureDuration <- as.numeric(data$exposure_upper - data$exposure_lower)
 summary(data$exposureDuration)
-head(data[is.na(data$exposureDuration), c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
-
-data <- data[!is.na(data$exposureDuration),]
 sum(data$exposureDuration == 0); sum(data$exposureDuration != 0)
 
-data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,100:104,111,112,128:130)]
+data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,19,100:104,111,112,128:130)]
 save(data.incubation, file = 'data/data_exposure.RData')
 
 # Dates in numeric format
@@ -64,17 +68,6 @@ summary(data.incubation$exposureDuration)
 sum(data.incubation$exposureDuration > 0)
 sum(data.incubation$symptom.onset < data.incubation$exposure.upper.num)
 sum(data.incubation$symptom.onset < data.incubation$exposure.lower.num)
-
-# data.incubation$exposure.upper.num <- ifelse(data.incubation$exposure.upper.num >= data.incubation$symptom.onset.num,
-#                                              data.incubation$symptom.onset.num - 1, # set to one day before symptom onset
-#                                              data.incubation$exposure.upper.num)
-# head(data.incubation[data.incubation$exposure.lower.num >= data.incubation$symptom.onset.num,
-#                      c(1,2,12,19:24,17,18)])
-# data.incubation$exposure.lower.num <- ifelse(data.incubation$exposure.lower.num > data.incubation$exposure.upper.num,
-#                                              data.incubation$exposure.upper.num,
-#                                              data.incubation$exposure.lower.num
-# )
-
 
 data.stan <- data.incubation[data.incubation$exposureDuration > 0, ]
 dim(data.stan)
