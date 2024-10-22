@@ -72,7 +72,8 @@ setup_network <- function(case.ids, # ordered case IDs
     
   }
   
-  # Constrain negative serial interval to be max -X days
+  ## Constrain negative serial interval to be max -X days
+  # infection matrix based on observed pairs
   inf.mat <- matrix(nrow = NCases, ncol = NCases)
   trans.mat <- matrix(nrow = NCases, ncol = NCases)
   for(i in 1:NCases){
@@ -90,6 +91,18 @@ setup_network <- function(case.ids, # ordered case IDs
       }
     }
   }
+  # reverse directionality also
+  for(i in 1:NCases){
+    for(j in 1:NCases){
+      if(i != j){
+        if(inf.mat[i, j] == 1){
+          inf.mat[j, i] <- 1
+          trans.mat[j, i] <- trans.mat[i, j]
+        }
+      }
+    }
+  }
+  
   # adapt infector-infectee matrix based on possible serial intervals
   time.mat <- matrix(nrow = NCases, ncol = NCases)
   for(i in 1:NCases){
@@ -128,47 +141,6 @@ setup_network <- function(case.ids, # ordered case IDs
   }
   NPossibleInfector2 <- rowSums(!is.na(PossibleInfector2))
   
-  ###-------------------------------------------------------------------------------------
-  ### Additional checks to avoid cycles
-  
-  if(!is.na(cluster)){
-    
-    ## Add cluster ID based on contacts for those that are missing
-    for(id in case.ids[is.na(cluster)]){
-      contacts <- PossibleInfector2[id, ]
-      clust.id <- cluster[contacts[!is.na(contacts)]]
-      if(length(unique(clust.id)) == 1){
-        cluster[case.ids[case.ids == id]] <- clust.id[1]
-      }else{stop()}
-    }
-    
-    ## For clusters with unknown index, randomly select one
-    for(c in unique(cluster)){
-      
-      if(!(0 %in% PossibleInfector2[case.ids[cluster == c], ])){
-        if(length(case.ids[cluster == c]) > 1){
-          temp <- c()
-          for(i in case.ids[cluster == c]){
-            for(j in case.ids[cluster == c]){
-              if(j %in% PossibleInfector2[i, ] & i %in% PossibleInfector2[j, ] & (Time[i]-Time[j]) %in% seq(-min.si, max.si, 1)){
-                temp <- c(temp, i, j)
-              }
-            }
-          }
-          if(!is.null(temp)){
-            ind <- sample(unique(temp), 1)
-            PossibleInfector2[ind, ] <- c(0, rep(NA, length(PossibleInfector2[ind, ]) - 1))
-          }
-        }else{ # if only one case in the cluster
-          id <- case.ids[cluster == c]
-          PossibleInfector2[id, ] <- c(0, rep(NA, length(PossibleInfector2[id, ]) - 1))
-        }
-      }
-    }
-    NPossibleInfector2    <- rowSums(!is.na(PossibleInfector2))
-    
-  }
-  
   ## When 2 cases only contacted each other (i.e. pairs), randomly select index (both are possible based on SI constraint)
   for(i in case.ids){
     for(j in case.ids){
@@ -180,7 +152,97 @@ setup_network <- function(case.ids, # ordered case IDs
   }  
   NPossibleInfector2    <- rowSums(!is.na(PossibleInfector2))
   
-  ## In addition, when case i has only one contact, j, and j is definitely the infector (based on SI constraint) --> i should be removed from j's infector list
+  ###-------------------------------------------------------------------------------------
+  ### Additional checks to avoid cycles
+  
+  # if(!is.na(cluster)){
+  
+  # ## Add cluster ID based on contacts for those that are missing
+  # for(id in case.ids[is.na(cluster)]){
+  #   contacts <- PossibleInfector2[id, ]
+  #   clust.id <- cluster[contacts[!is.na(contacts)]]
+  #   if(length(unique(clust.id)) == 1){
+  #     cluster[case.ids[case.ids == id]] <- clust.id[1]
+  #   }else{stop()}
+  # }
+  
+  ## Add cluster ID
+  c <- 1; cluster <- NA
+  for(id in 1:length(case.ids)){
+    contacts <- PossibleInfector2[id, ]
+    contacts <- contacts[!is.na(contacts)]
+    if((length(contacts) == 1 && contacts == 0)  || (length(contacts) == 0)){
+      cluster[case.ids[case.ids == id]] <- c
+      c <- c + 1
+    }else{
+      clust.id <- cluster[contacts[!is.na(contacts)]]
+      if(length(unique(clust.id == 1))){
+        cluster[case.ids[case.ids == id]] <- clust.id[1]
+      }else{stop()}
+    }
+  }
+  cluster[c(167,168,170)] <- c
+  cluster[c(60,61,65,66,77)] <- c + 1
+  cluster[c(72,74,75)] <- c + 2
+  cluster[c(57,68,98,58,78,49,54,81,82)] <- 27
+  while(NA %in% cluster){
+    for(i in case.ids){
+      for(j in case.ids){
+        if(inf.mat[i, j] == 1){
+          if(is.na(cluster[i])){
+            cluster[i] <- cluster[j]
+          }
+          if(is.na(cluster[j])){
+            cluster[j] <- cluster[i]
+          }
+        }
+      }
+    }    
+  }
+  ids <- 1
+  while(length(unique(ids)) > 0){
+    ids <- c()
+    for(i in case.ids){
+      for(j in case.ids){
+        if(inf.mat[i,j] == 1 || inf.mat[j,i] == 1){
+          if(cluster[i] != cluster[j]){
+            ids <- unique(c(ids, i, j))
+            cluster[i] <- cluster[j]
+          }
+        }
+      }
+    }
+    # print(ids)
+  }
+  
+  ## For clusters with unknown index, randomly select one
+  for(c in unique(cluster)){
+    
+    if(!(0 %in% PossibleInfector2[case.ids[cluster == c], ])){
+      if(length(case.ids[cluster == c]) > 1){
+        temp <- c()
+        for(i in case.ids[cluster == c]){
+          for(j in case.ids[cluster == c]){
+            if(j %in% PossibleInfector2[i, ] & i %in% PossibleInfector2[j, ] & (Time[i]-Time[j]) %in% seq(-min.si, max.si, 1)){
+              temp <- c(temp, i, j)
+            }
+          }
+        }
+        if(!is.null(temp)){
+          ind <- sample(unique(temp), 1)
+          PossibleInfector2[ind, ] <- c(0, rep(NA, length(PossibleInfector2[ind, ]) - 1))
+        }
+      }else{ # if only one case in the cluster
+        id <- case.ids[cluster == c]
+        PossibleInfector2[id, ] <- c(0, rep(NA, length(PossibleInfector2[id, ]) - 1))
+      }
+    }
+  }
+  NPossibleInfector2    <- rowSums(!is.na(PossibleInfector2))
+  
+  # }
+  
+  ## When case i has only one contact, j, and j is definitely the infector (based on SI constraint) --> i should be removed from j's infector list
   for(i in case.ids){
     for(j in case.ids){
       if(NPossibleInfector2[i] == 1 & PossibleInfector2[i, 1] == j & (i %in% PossibleInfector2[j, ])){

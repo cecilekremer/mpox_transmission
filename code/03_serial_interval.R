@@ -107,11 +107,12 @@ data.si$transmission_list <- lapply(routes, function(x){
 
 
 min.si <- 5 # absolute value of the max. allowed negative serial interval
+max.si <- 30
 
 rm(Case); rm(NCases); rm(i)
 library(igraph)
 
-# ## Sample networks
+# ## Sample networks --> VSC
 # source('code/functions/fun_network.R')
 # 
 # num.nets <- 1000
@@ -130,17 +131,17 @@ library(igraph)
 #                        symptom.onset = as.Date(data.si$symptom.onset),
 #                        helper.date = as.Date(data.si$date), # date of questionaire
 #                        min.si = min.si, # absolute value of the max. allowed negative serial interval
-#                        max.si = 30
+#                        max.si = max.si
 #   )
-#   
+# 
 #   trees[i, ] <- c(i, net$network)
 #   onsets[i, ] <- c(i, net$onset.times)
 #   transroutes[i, ] <- c(i, net$transm.route)
-#   
-#   if(i%%100 == 0){
+# 
+#   # if(i%%100 == 0){
 #     print(i)
-#   }
-#   
+#   # }
+# 
 # }
 # # proc.time() - ptm
 # save(trees, file = 'code/trees_211024.RData')
@@ -148,21 +149,27 @@ library(igraph)
 # save(transroutes, file = 'code/routes_211024.RData')
 
 ## MCMC to estimate serial interval using normal distribution
-load('code/trees_211024.RData')
-load('code/onsets_211024.RData')
-load('code/routes_211024.RData')
+
+# Change network when changing min and max si !!!
+load('code/trees_221024.RData')
+load('code/onsets_221024.RData')
+load('code/routes_221024.RData')
+
+# # check if all networks are unique
+# library(mgcv)
+# dim(uniquecombs(trees[,c(-1)]))
 
 source('code/functions/fun_mcmc_si_strat.R')
 
-nrun <- 2000000
+nrun <- 5000000
 burnin <- 0.4
-thin <- 100
+thin <- 1000
 updatefr <- 2 # update network every other run
 out <- estimate_si(case.ids = data.si$ID,
                    networks = trees,
                    onsets = onsets,
                    routes = transroutes,
-                   max.si = 30,
+                   max.si = 30, ## Change network when changing min and max si !!!
                    start.parms = c(1, 1, 1, 1), # mean1 = theta[1], sd1 = theta[2], mean2 = theta[3], sd2 = theta[4]
                    tuning.parms = c(0.2, 0.2, 0.2, 0.2),
                    mcmc.runs = nrun,
@@ -303,6 +310,52 @@ dev.off()
 library(EpiLPS)
 source('code/functions/estimSI_boot.R')
 
+xS <- data.frame(sL = unlist(SerialInterval) - 0.5, sR = unlist(SerialInterval) + 0.5)
+set.seed(2022)
+fitS <- estimSI_boot(x = xS)
+round(fitS$estim, 2)
+
+# Plot cdf
+jpeg('results/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+bsLO <- min(xS$sL) - 0.5
+bsRO <- max(xS$sR) + 0.5
+sfineO <- seq(bsLO, bsRO, length = 100)
+dsfineO <- sfineO[2] - sfineO[1]
+par(mfrow = c(1,1))
+# Empirical CDF
+ecdf_obs <- ecdf(unlist(SerialInterval))
+plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
+# Non-parametric CDF
+lines(sfineO, sapply(sfineO, fitS$Fhat), type = 'l', col = 'darkblue',
+      xlab = "Serial interval (days)",
+      ylab = "Cumulative distribution function",
+      xaxt = 'n', xlim = c(min(xS$sL)-1, max(xS$sR)+1),
+      cex.lab = 2, cex.axis = 1.5, lwd = 3
+)
+title(main = 'All transmission', cex.main = 2)
+axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
+# # Normal CDF
+# lines(sfineO, sapply(sfineO, pnorm, mean = sumstats$quantiles[3, 3], sd = sumstats$quantiles[4, 3]),
+#       col = '#54C8F0', lwd = 3, lty = 2)
+# legend('topleft', c('Normal CDF','Non-parametric CDF'), col = c('#54C8F0','darkblue'), lwd = c(3,3), cex = 1.5)
+# 95%CI for selected percentiles
+low_95 <- fitS$estim$CI95p_l[3:7] 
+up_95 <- fitS$estim$CI95p_r[3:7]
+perc <- c(0.05,0.25,0.50,0.75,0.95)
+perctxt <- paste0(perc * 100, "th percentile")
+for(j in 1:length(up_95)){
+  lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
+        col = "darkblue", lwd = 3, lty = 1)
+  lines(x = fitS$estim$Estim[3:7], perc, type = "p", pch = 16,
+        col = "darkblue", cex = 2)
+  text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
+}
+# lines(x = c(sumstats$quantiles[3, 1], sumstats$quantiles[3,5]), y = c(0.5, 0.5),
+#       type = "l", col = "#54C8F0", lwd = 3, lty = 2)
+# lines(x = sumstats$quantiles[3, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)
+dev.off()
+
+##-----------------------------------------------------------------------------------
 ## Non-sexual transmission
 xNonSexual <- data.frame(sL = SerialInterval[[2]] - 0.5, sR = SerialInterval[[2]] + 0.5)
 set.seed(2022)
@@ -324,17 +377,20 @@ for(b in 1:BO){
   print(b)
 }
 
-jpeg('results/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/plotCDFnonSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(1,1))
+# Empirical CDF
+ecdf_obs <- ecdf(SerialInterval[[2]])
+plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
 # Non-parametric CDF
-plot(sfineO, sapply(sfineO, fitNonSexual$Fhat), type = 'l', col = 'darkblue',
+lines(sfineO, sapply(sfineO, fitNonSexual$Fhat), type = 'l', col = 'darkblue',
      xlab = "Serial interval (days)",
      ylab = "Cumulative distribution function",
      xaxt = 'n', xlim = c(min(xNonSexual$sL)-1, max(xNonSexual$sR)+1),
      cex.lab = 2, cex.axis = 1.5, lwd = 3
 )
 title(main = 'Non-sexual transmission', cex.main = 2)
-axis(1, at=seq(-3, 29, by = 2), cex.axis = 1.5)
+axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
 # Normal CDF
 lines(sfineO, sapply(sfineO, pnorm, mean = sumstats$quantiles[3, 3], sd = sumstats$quantiles[4, 3]),
       col = '#54C8F0', lwd = 3, lty = 2)
@@ -354,4 +410,63 @@ for(j in 1:length(up_95)){
 lines(x = c(sumstats$quantiles[3, 1], sumstats$quantiles[3,5]), y = c(0.5, 0.5),
       type = "l", col = "#54C8F0", lwd = 3, lty = 2)
 lines(x = sumstats$quantiles[3, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)
+dev.off()
+
+
+##-----------------------------------------------------------------------------------
+## Sexual transmission
+xSexual <- data.frame(sL = SerialInterval[[1]] - 0.5, sR = SerialInterval[[1]] + 0.5)
+set.seed(2022)
+fitSexual <- estimSI_boot(x = xSexual)
+round(fitSexual$estim, 2)
+
+# Plot cdf
+bsLO <- min(xSexual$sL) - 0.5
+bsRO <- max(xSexual$sR) + 0.5
+sfineO <- seq(bsLO, bsRO, length = 100)
+dsfineO <- sfineO[2] - sfineO[1]
+BO <- nrow(fitSexual$bootsamples)
+sboot_cdfO <- matrix(0, nrow = BO, ncol = 100)
+for(b in 1:BO){
+  fsbootO <- histosmooth(fitSexual$bootsamples[b,], xl = bsLO, xr = bsRO, K = 12)
+  # fsbootO <- histosmooth(fitSexual$bootsamples[b,], K = 12)
+  sboot_densO <- sapply(sfineO, fsbootO$fdens)
+  sboot_densO <- sboot_densO/sum(sboot_densO * dsfineO)
+  sboot_cdfO[b,] <- cumsum(sboot_densO * dsfineO)
+  print(b)
+}
+
+jpeg('results/plotCDFSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+par(mfrow = c(1,1))
+# Empirical CDF
+ecdf_obs <- ecdf(SerialInterval[[1]])
+plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
+# Non-parametric CDF
+lines(sfineO, sapply(sfineO, fitSexual$Fhat), type = 'l', col = 'darkblue',
+      xlab = "Serial interval (days)",
+      ylab = "Cumulative distribution function",
+      xaxt = 'n', xlim = c(min(xSexual$sL)-1, max(xSexual$sR)+1),
+      cex.lab = 2, cex.axis = 1.5, lwd = 3
+)
+title(main = 'Sexual transmission', cex.main = 2)
+axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
+# Normal CDF
+lines(sfineO, sapply(sfineO, pnorm, mean = sumstats$quantiles[1, 3], sd = sumstats$quantiles[1, 3]),
+      col = '#54C8F0', lwd = 3, lty = 2)
+legend('topleft', c('Normal CDF','Non-parametric CDF'), col = c('#54C8F0','darkblue'), lwd = c(3,3), cex = 1.5)
+# 95%CI for selected percentiles
+low_95 <- fitSexual$estim$CI95p_l[3:7] 
+up_95 <- fitSexual$estim$CI95p_r[3:7]
+perc <- c(0.05,0.25,0.50,0.75,0.95)
+perctxt <- paste0(perc * 100, "th percentile")
+for(j in 1:length(up_95)){
+  lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
+        col = "darkblue", lwd = 3, lty = 1)
+  lines(x = fitSexual$estim$Estim[3:7], perc, type = "p", pch = 16,
+        col = "darkblue", cex = 2)
+  text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
+}
+lines(x = c(sumstats$quantiles[1, 1], sumstats$quantiles[1,5]), y = c(0.5, 0.5),
+      type = "l", col = "#54C8F0", lwd = 3, lty = 2)
+lines(x = sumstats$quantiles[1, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)
 dev.off()
