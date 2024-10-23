@@ -9,9 +9,9 @@
 
 * ***Incubation period***: using EpiLPS package
 
-* ***Most likely network***: indicate sex workers - transmission matrix by age (assortativity?)
+* ***Most likely network***: ~indicate sex workers~ - transmission matrix by age (assortativity?)
 
-* ***Serial interval*** MCMC: sensitivity analysis with constraint [-10; 40] days
+* ~***Serial interval*** MCMC: sensitivity analysis with constraint [-10; 40] days~
 
 * ***Serial interval*** MCMC: sensitivity analysis where 'dont' remember' = sexual contact
 
