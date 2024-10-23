@@ -289,7 +289,7 @@ setup_network <- function(case.ids, # ordered case IDs
   n.try <- 1 # set limit on number of times to resample
   # ptm = proc.time()
   while(n.cycles > 0){
-    Draw <- round(runif(length(Update), min = 0.5, max = NPossibleInfector2[Update]+0.5))
+    Draw <- round(runif(length(Update), min = 0.6, max = NPossibleInfector2[Update]+0.4))
     for(i in 1:length(IsContributorToLikelorg)){
       Network[Update[i]] <- infector.mat.final[Update[i], Draw[i]]
     }

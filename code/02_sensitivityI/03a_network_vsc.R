@@ -79,8 +79,8 @@ data.si$transmission_list <- lapply(routes, function(x){
 })
 
 
-min.si <- 5 # absolute value of the max. allowed negative serial interval
-max.si <- 30
+min.si <- 10 # absolute value of the max. allowed negative serial interval
+max.si <- 40
 
 rm(Case); rm(NCases); rm(i)
 library(igraph)
@@ -88,7 +88,7 @@ library(igraph)
 ## Sample networks
 source('/lustre1/scratch/326/vsc32693/simNet/fun_network.R')
 
-num.nets <- 10000
+num.nets <- 1000
 
 library(foreach)
 library(doParallel)
@@ -96,7 +96,7 @@ library(doParallel)
 cl <- makeCluster(96)
 registerDoParallel(cl)
 
-foreach(t = 1:num.nets, .packages = c('igraph'), .errorhandling = 'remove') %dopar% {
+foreach(t = 1:num.nets, .packages = c('igraph'), .errorhandling = 'stop') %do% {
   
   net <- setup_network(case.ids = data.si$ID,
                        cluster = NA,
@@ -113,7 +113,7 @@ foreach(t = 1:num.nets, .packages = c('igraph'), .errorhandling = 'remove') %dop
   out.trees <- paste0("/lustre1/scratch/326/vsc32693/simNet/out/network_", t, ".csv")
   out.times <- paste0("/lustre1/scratch/326/vsc32693/simNet/out/onset_", t, ".csv")
   out.trans <- paste0("/lustre1/scratch/326/vsc32693/simNet/out/transm_", t, ".csv")
-  
+
   write.table(c(t, net$network), file = out.trees, append = F, col.names = F, row.names = F, sep = ",", quote = F)
   write.table(c(t, net$onset.times), file = out.times, append = F, col.names = F, row.names = F, sep = ",", quote = F)
   write.table(c(t, net$transm.route), file = out.trans, append = F, col.names = F, row.names = F, sep = ",", quote = F)
