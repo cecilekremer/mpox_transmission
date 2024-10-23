@@ -88,7 +88,7 @@ library(igraph)
 ## Sample networks
 source('/lustre1/scratch/326/vsc32693/simNet/fun_network.R')
 
-num.nets <- 1000
+num.nets <- 10000
 
 library(foreach)
 library(doParallel)

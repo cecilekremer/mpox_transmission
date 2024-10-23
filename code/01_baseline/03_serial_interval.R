@@ -113,7 +113,7 @@ rm(Case); rm(NCases); rm(i)
 library(igraph)
 
 # ## Sample networks --> VSC
-# source('code/functions/fun_network.R')
+# source('code/01_baseline/functions/fun_network.R')
 # 
 # num.nets <- 1000
 # trees <- matrix(NA, nrow = num.nets, ncol = length(unique(data.si$ID)) + 1)
@@ -151,25 +151,33 @@ library(igraph)
 ## MCMC to estimate serial interval using normal distribution
 
 # Change network when changing min and max si !!!
-load('code/trees_221024.RData')
-load('code/onsets_221024.RData')
-load('code/routes_221024.RData')
+load('code/01_baseline/trees_221024_base.RData')
+load('code/01_baseline/onsets_221024_base.RData')
+load('code/01_baseline/routes_221024_base.RData')
 
 # # check if all networks are unique
 # library(mgcv)
 # dim(uniquecombs(trees[,c(-1)]))
 
-source('code/functions/fun_mcmc_si_strat.R')
+trees <- trees[1:1000, ]
+onsets <- onsets[1:1000, ]
+transroutes <- transroutes[1:1000, ]
+
+trees[,1] <- 1:dim(trees)[1]
+onsets[,1] <- 1:dim(onsets)[1]
+transroutes[,1] <- 1:dim(transroutes)[1]
+
+source('code/01_baseline/functions/fun_mcmc_si_strat.R')
 
 nrun <- 5000000
 burnin <- 0.4
-thin <- 1000
+thin <- 200
 updatefr <- 2 # update network every other run
 out <- estimate_si(case.ids = data.si$ID,
                    networks = trees,
                    onsets = onsets,
                    routes = transroutes,
-                   max.si = 30, ## Change network when changing min and max si !!!
+                   max.si = max.si, ## Change network when changing min and max si !!!
                    start.parms = c(1, 1, 1, 1), # mean1 = theta[1], sd1 = theta[2], mean2 = theta[3], sd2 = theta[4]
                    tuning.parms = c(0.2, 0.2, 0.2, 0.2),
                    mcmc.runs = nrun,
@@ -186,7 +194,9 @@ library(coda)
 chain1 <- coda::mcmc(out$parms[seq(1, (nrun-(burnin*nrun))/thin), ])
 colnames(chain1) = c("mean SI sexual","sd SI sexual","mean SI non-sexual","sd SI non-sexual")
 autocorr.plot(chain1[,c(1,2,3,4)]) # see if thinning has to be increased
+jpeg('results/baseline/plotConvergence.jpeg', width = 30, height = 30, units = 'cm', res = 300)
 plot(chain1[,c(1,2,3,4)])
+dev.off()
 summary(chain1); sumstats <- summary(chain1)
 
 par(mfrow=c(2,1))
@@ -235,7 +245,7 @@ for(r in c(1,2)){
   SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
 }
 
-jpeg('results/plotFitMostLikely.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/baseline/plotFitMostLikely.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(2, 1))
 hist(SerialInterval[[1]], prob = T, xlim = c(-20, 40), breaks = 20, 
      main = paste0('Sexual transmission (n = ', length(SerialInterval[[1]]), ')'), xlab = 'Serial interval') 
@@ -256,7 +266,7 @@ tree <- cbind(Infector, Infectee, Type)
 tree <- tree[which(Infector != 0), ]
 library(igraph)
 g <- graph_from_edgelist(tree[,c(1,2)])
-source('code/functions/fun_network.R')
+source('code/01_baseline/functions/fun_network.R')
 length(FindCycles(g)) == 0
 
 edge.mat <- tree
@@ -270,11 +280,33 @@ for(i in 1:length(case)){
   age[i] <- data.si$agecat[data.si$ID == i]
   gender[i] <- data.si$gender[data.si$ID == i]
 }
+occupation <- c() # occupation_prim = 3 = sex worker' ; occupation_prim = 4 = mine worker
+for(i in 1:length(case)){
+  occupation[i] <- ifelse(data.si$occupation_prim[data.si$ID == i] == 3, 1, ifelse(data.si$occupation_prim[data.si$ID == i] == 4, 2, 3))  # 1 = sex worker, 2 = mine worker, 3 = other
+}
+occupation <- ifelse(is.na(occupation), 3, occupation)
 
 table(age)/sum(table(age))
 table(gender)/sum(table(gender))
+table(occupation)/sum(table(occupation))
 
-vertex.mat <- data.frame(case, age, gender)
+vertex.mat <- data.frame(case, age, gender, occupation)
+vertex.mat$gender.occupation <- NA
+for(i in 1:dim(vertex.mat)[1]){
+  if(vertex.mat$gender[i] == 2){
+    if(vertex.mat$occupation[i] == 1){
+      vertex.mat$gender.occupation[i] <- 1 # female sex worker
+    }else{
+      vertex.mat$gender.occupation[i] <- 3 # female other
+    }
+  }else if(vertex.mat$gender[i] == 1){
+    if(vertex.mat$occupation[i] == 2){
+      vertex.mat$gender.occupation[i] <- 2 # male miner
+    }else{
+      vertex.mat$gender.occupation[i] <- 4 # male other
+    }
+  }
+}
 
 net <- graph.data.frame(edge.mat, vertex.mat, directed = T)
 
@@ -285,19 +317,26 @@ colr2 <- c("#B569DB", "#2A9832", "#F39110")
 V(net)$color <- colr2[V(net)$age]
 edge.col <- c("red","black")
 E(net)$color <- edge.col[E(net)$Type]
+# v.shape <- c('csquare', 'crectangle', 'square', 'rectangle')
 v.shape <- c('circle', 'square')
+# v.shape.occ <- c('filled square', 'filled circle', NA)
+# V(net)$shape <- v.shape[V(net)$gender.occupation]
 V(net)$shape <- v.shape[V(net)$gender]
+v.size <- c(5,5,3,3)
+V(net)$size <- v.size[V(net)$gender.occupation]
 
-jpeg('results/plotNetwork.jpeg', width = 30, height = 30, units = 'cm', res = 300)
+jpeg('results/baseline/plotNetwork.jpeg', width = 50, height = 50, units = 'cm', res = 300)
 par(mfrow = c(1,1))
-plot(net, vertex.size = 3, edge.color = E(net)$color, vertex.shape = V(net)$shape,
+plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape,
      vertex.label = '', layout=layout.fruchterman.reingold,
      vertex.label.cex = 1.2, edge.arrow.size = 0.5)
-legend('topleft', c(">18y", "12-17y", "<12y", "male", "female", "sexual"),
-       col = c("#B569DB", "#2A9832", "#F39110", 1, 1, "red"),
-       lty = c(rep(NA, 5), 1),
-       pch = c(rep(16, 3), 1, 0, NA),
-       cex = 1.2)
+legend('topleft', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other", "sexual"),
+       col = c("#B569DB", "#2A9832", "#F39110", 1, 1, 1, 1, "red"),
+       lty = c(rep(NA, 7), 1),
+       pch = c(rep(16, 3), 1, 1, 0, 0, NA),
+       pt.cex = c(3,3,3,5,3,5,3,NA),
+       cex = 1.2,
+       y.intersp = 2)
 dev.off()
 
 ##-------------------------------------------------------------------------------------------
@@ -308,7 +347,7 @@ dev.off()
 ##-------------------------------------------------------------------------------------------
 
 library(EpiLPS)
-source('code/functions/estimSI_boot.R')
+source('code/01_baseline/functions/estimSI_boot.R')
 
 xS <- data.frame(sL = unlist(SerialInterval) - 0.5, sR = unlist(SerialInterval) + 0.5)
 set.seed(2022)
@@ -316,7 +355,7 @@ fitS <- estimSI_boot(x = xS)
 round(fitS$estim, 2)
 
 # Plot cdf
-jpeg('results/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/baseline/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 bsLO <- min(xS$sL) - 0.5
 bsRO <- max(xS$sR) + 0.5
 sfineO <- seq(bsLO, bsRO, length = 100)
@@ -377,7 +416,7 @@ for(b in 1:BO){
   print(b)
 }
 
-jpeg('results/plotCDFnonSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/baseline/plotCDFnonSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(1,1))
 # Empirical CDF
 ecdf_obs <- ecdf(SerialInterval[[2]])
@@ -412,7 +451,6 @@ lines(x = c(sumstats$quantiles[3, 1], sumstats$quantiles[3,5]), y = c(0.5, 0.5),
 lines(x = sumstats$quantiles[3, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)
 dev.off()
 
-
 ##-----------------------------------------------------------------------------------
 ## Sexual transmission
 xSexual <- data.frame(sL = SerialInterval[[1]] - 0.5, sR = SerialInterval[[1]] + 0.5)
@@ -436,7 +474,7 @@ for(b in 1:BO){
   print(b)
 }
 
-jpeg('results/plotCDFSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/baseline/plotCDFSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(1,1))
 # Empirical CDF
 ecdf_obs <- ecdf(SerialInterval[[1]])
