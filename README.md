@@ -1,7 +1,7 @@
 
 # TO DO
 
-* Check data on previous vaccination --> can we use it in estimation of incubation period?
+* ~Check data on previous vaccination --> can we use it in estimation of incubation period?~
 
 * Check symptom onset dates for very negative serial intervals --> mistakes in data?
 

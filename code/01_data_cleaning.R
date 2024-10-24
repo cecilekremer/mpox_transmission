@@ -233,7 +233,7 @@ data$condomuse <- data$prsvraport # condom use: 1 = (almost) never, 2 = sometime
 # sum(grepl('contact direct répété', data$hyp_com, ignore.case = T))
 data$transm_hyp <- data$hyp_com
 
-data$contact_mpox <- data$pesattient # contact w/ (suspected) mpox case:1 = yes, 2 = no, 3 = don't know
+data$contact_mpox <- data$pesattient # contact w/ (suspected) mpox case: 1 = yes, 2 = no, 3 = don't know
 data$num_contact_mpox <- data$cbinpers # if contact, w/ how many different persons
 ## Information recorded for up to 4 contacts:
 data$contact1_included <- data$ptatmpox # 1 = included in this study
