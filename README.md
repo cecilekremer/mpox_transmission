@@ -9,13 +9,13 @@
 
 * ***Incubation period***: using EpiLPS package
 
-* ***Most likely network***: ~indicate sex workers~ - transmission matrix by age (assortativity?)
+* ~***Most likely network***: indicate sex workers - transmission matrix by age (assortativity?)~
 
 * ~***Serial interval*** MCMC: sensitivity analysis with constraint [-10; 40] days~
 
-* ***Serial interval*** MCMC: sensitivity analysis where 'dont' remember' = sexual contact
+* ~***Serial interval*** MCMC: sensitivity analysis where 'dont' remember' = sexual contact~ -> not occurring in pairs data
 
-* ***Serial interval*** MCMC: sensitivity analysis -> if transmission hypothesis is sexual, only include the known sexual contacts (not other contacts) 
+* ***Serial interval*** MCMC: sensitivity analysis -> ~if transmission hypothesis is sexual, only include the known sexual contacts (not other contacts)~ OR assign higher probability of being the infector?
 
 * ***Serial interval*** MCMC: stratified by age group of source case
 
@@ -39,9 +39,5 @@
 * Duration of hospitalisations: individual characteristics? clinical presentation?
 
 * Infection severity: higher virulence and case fatality rate than Clade IIb, but lower than Clade Ia
-
-* ***Serial interval***: stratified by attributes such as transmission route, age, gender
-
-* Reconstruction of transmission tree 
 
 * Pregnancy outcomes: vertical transmission?
