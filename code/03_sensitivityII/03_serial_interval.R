@@ -208,7 +208,7 @@ library(coda)
 chain1 <- coda::mcmc(out$parms[seq(1, (nrun-(burnin*nrun))/thin), ])
 colnames(chain1) = c("mean SI sexual","sd SI sexual","mean SI non-sexual","sd SI non-sexual")
 autocorr.plot(chain1[,c(1,2,3,4)]) # see if thinning has to be increased
-jpeg('results/baseline/plotConvergence.jpeg', width = 30, height = 30, units = 'cm', res = 300)
+jpeg('results/sensitivity2/plotConvergence.jpeg', width = 30, height = 30, units = 'cm', res = 300)
 plot(chain1[,c(1,2,3,4)])
 dev.off()
 summary(chain1); sumstats <- summary(chain1)
@@ -259,7 +259,7 @@ for(r in c(1,2)){
   SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
 }
 
-jpeg('results/baseline/plotFitMostLikely.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/sensitivity2/plotFitMostLikely.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(2, 1))
 hist(SerialInterval[[1]], prob = T, xlim = c(-20, 40), breaks = 20, 
      main = paste0('Sexual transmission (n = ', length(SerialInterval[[1]]), ')'), xlab = 'Serial interval') 
@@ -280,7 +280,7 @@ tree <- cbind(Infector, Infectee, Type)
 tree <- tree[which(Infector != 0), ]
 library(igraph)
 g <- graph_from_edgelist(tree[,c(1,2)])
-source('code/01_baseline/functions/fun_network.R')
+source('code/03_sensitivityII/functions/fun_network.R')
 length(FindCycles(g)) == 0
 
 edge.mat <- tree
@@ -392,7 +392,7 @@ V(net)$shape <- v.shape[V(net)$gender]
 v.size <- c(5,5,3,3)
 V(net)$size <- v.size[V(net)$gender.occupation]
 
-jpeg('results/baseline/plotNetwork.jpeg', width = 50, height = 50, units = 'cm', res = 300)
+jpeg('results/sensitivity2/plotNetwork.jpeg', width = 50, height = 50, units = 'cm', res = 300)
 par(mfrow = c(1,1))
 plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape,
      vertex.label = '', layout=layout.fruchterman.reingold,
@@ -414,7 +414,7 @@ dev.off()
 ##-------------------------------------------------------------------------------------------
 
 library(EpiLPS)
-source('code/01_baseline/functions/estimSI_boot.R')
+source('code/03_sensitivityII/functions/estimSI_boot.R')
 
 xS <- data.frame(sL = unlist(SerialInterval) - 0.5, sR = unlist(SerialInterval) + 0.5)
 set.seed(2022)
@@ -422,7 +422,7 @@ fitS <- estimSI_boot(x = xS)
 round(fitS$estim, 2)
 
 # Plot cdf
-jpeg('results/baseline/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/sensitivity2/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 bsLO <- min(xS$sL) - 0.5
 bsRO <- max(xS$sR) + 0.5
 sfineO <- seq(bsLO, bsRO, length = 100)
@@ -483,7 +483,7 @@ for(b in 1:BO){
   print(b)
 }
 
-jpeg('results/baseline/plotCDFnonSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/sensitivity2/plotCDFnonSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(1,1))
 # Empirical CDF
 ecdf_obs <- ecdf(SerialInterval[[2]])
@@ -541,7 +541,7 @@ for(b in 1:BO){
   print(b)
 }
 
-jpeg('results/baseline/plotCDFSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/sensitivity2/plotCDFSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 par(mfrow = c(1,1))
 # Empirical CDF
 ecdf_obs <- ecdf(SerialInterval[[1]])
