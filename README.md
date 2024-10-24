@@ -5,9 +5,9 @@
 
 * Check symptom onset dates for very negative serial intervals --> mistakes in data?
 
-* ***Incubation period***: vary the lower bound of exposure window to see the impact on estimates
+* ~***Incubation period***: vary the lower bound of exposure window to see the impact on estimates~
 
-* ***Incubation period***: using EpiLPS package
+* ~***Incubation period***: using EpiLPS package~
 
 * ~***Most likely network***: indicate sex workers - transmission matrix by age (assortativity?)~
 
