@@ -29,26 +29,28 @@ data <- data[!is.na(data$contact1_included) | !is.na(data$contact2_included) | !
 data <- data[!is.na(data$symptom.onset),]
 dim(data)
 
+max.int <- 24 # change for sensitivity analysis
+
 library(dplyr)
 data <- data %>%
   group_by(ID) %>%
   mutate(
     # exposure_lower = as.Date(symptom.onset - 21),
-    exposure_lower = min(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - 21))], 
-                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - 21))], 
-                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - 21))], 
-                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - 21))], 
+    exposure_lower = min(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - max.int))], 
+                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - max.int))], 
+                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - max.int))], 
+                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - max.int))], 
                          na.rm = T),
-    exposure_upper = max(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - 21))], 
-                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - 21))], 
-                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - 21))], 
-                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - 21))], 
+    exposure_upper = max(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - max.int))], 
+                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - max.int))], 
+                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - max.int))], 
+                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - max.int))], 
                          na.rm = T)
   )
 data <- data[!is.infinite((data$exposure_upper)), ]
 dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
 sum(data$exposure_upper >= data$symptom.onset, na.rm = T)
-data$exposure_lower <- ifelse(data$exposure_lower == data$exposure_upper, as.Date(data$symptom.onset - 21), data$exposure_lower)
+data$exposure_lower <- ifelse(data$exposure_lower == data$exposure_upper, as.Date(data$symptom.onset - max.int), data$exposure_lower)
 data$exposure_lower <- as.Date(data$exposure_lower); summary(data$exposure_lower)
 
 data$exposureDuration <- as.numeric(data$exposure_upper - data$exposure_lower)
@@ -56,7 +58,7 @@ summary(data$exposureDuration)
 sum(data$exposureDuration == 0); sum(data$exposureDuration != 0)
 
 data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,19,100:104,111,112,128:130)]
-save(data.incubation, file = 'data/data_exposure.RData')
+save(data.incubation, file = 'data/data_exposure_sens24d.RData')
 
 # Dates in numeric format
 minDate <- min(data.incubation$symptom.onset, data.incubation$exposure_lower, data.incubation$exposure_upper)
@@ -122,6 +124,7 @@ code <- sprintf("
 names(code) <- distributions
 
 models <- mapply(stan_model, model_code = code)
+# source('code/stanmodIncub.RData')
 
 # Fit stan models
 fit <- mapply(sampling, models, list(input_data), iter = 10000, warmup = 3000, chain = 4)
@@ -136,6 +139,13 @@ res <- apply(means, 2, quantile, a_percentile)
 ll <- mapply(function(z) loo(extract_log_lik(z))$looic, fit)
 waic <- mapply(function(z) waic(extract_log_lik(z))$waic, fit)
 rbind(res, looIC=ll, WAIC=waic)
+
+variances <- cbind((pos$weibull[,2]^2)*((gamma(1 + (2/pos$weibull[,1])) - (gamma(1 + (1/pos$weibull[,1])))^2)),
+                   pos$gamma[,1] / (pos$gamma[,2]^2),
+                   (exp(pos$lognormal[,2]^2) - 1) * (exp(2*pos$lognormal[,1] + pos$lognormal[,2]^2))
+)
+res2 <- apply(variances, 2, quantile, a_percentile)
+sqrt(res2)
 
 cens_w_percentiles <- sapply(c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99), function(p) quantile(qweibull(p = p, shape = pos$weibull[,1], scale = pos$weibull[,2]), probs = c(0.025, 0.5, 0.975)))
 colnames(cens_w_percentiles) <- c(0.025, 0.05, 0.5, 0.95, 0.975, 0.99)
@@ -192,3 +202,26 @@ lognorm_ggplot <- ggplot(df, aes(x=inc_day)) +
   labs(x="Incubation period (days)", y = "Proportion")+
   ggtitle("Lognormal")
 (lognorm_ggplot|gamma_ggplot|weibul_ggplot) + plot_annotation(tag_levels = 'A') #16inchi x 6 inchi
+
+##--------------------------------------------------------------
+## EpiLPS semi-parametric estimation
+
+library(EpiLPS)
+?estimIncub
+# https://statsandr.com/blog/epilps-for-estimation-of-incubation-times/
+# Model computes a semi-parametric fit to the data and compares it with classic parametric fits (lognormal, weibull, gamma)
+# candidate with the lowest BIC is selected
+
+data.stan$tL <- data.stan$symptom.onset.num - data.stan$exposure.upper.num
+data.stan$tR <- data.stan$symptom.onset.num - data.stan$exposure.lower.num
+
+dataIncub <- data.frame(tL = data.stan$tL, tR = data.stan$tR)
+head(dataIncub)
+summary(dataIncub$tR - dataIncub$tL)
+
+set.seed(222)
+out <- estimIncub(dataIncub, verbose = TRUE)
+out$stats
+library(ggplot2)
+library(gridExtra)
+grid.arrange(plot(out, typ = "incubwin"), plot(out, type = "pdf"), nrow = 1)
