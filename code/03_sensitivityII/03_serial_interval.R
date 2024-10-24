@@ -2,35 +2,8 @@
 load('data/contact_data.RData')
 data <- data.contact.clean
 
-##---------------------------------------------------------------
-## Individuals reporting only one contact (N = 86)
-
-data.si <- (data[data$contact1_id != '' & data$contact2_id == '' & data$contact3_id == '', ])
-data.si <- data.si[data.si$contacts != '', ]
-all(nchar(data.si$contacts) <= 3 )
-data.si$contacts <- as.numeric(data.si$contacts)
-
-summary(data.si$symptom.onset)
-data.si$symptom.onset.secondary <- NA
-for(i in 1:dim(data.si)[1]){
-  idcon <- data.si$contacts[i]
-  dt <- data$symptom.onset[data$ID == idcon] # take from full dataset
-  data.si$symptom.onset.secondary[i] <- ifelse(is.na(dt), NA, as.Date(dt))
-}
-data.si$symptom.onset.secondary <- as.Date(data.si$symptom.onset.secondary)
-
-data.si$serial.interval <- as.numeric(data.si$symptom.onset.secondary - data.si$symptom.onset)
-
-summary(data.si$serial.interval)
-hist(data.si$serial.interval[data.si$contact1_sexual == 1]); summary(data.si$serial.interval[data.si$contact1_sexual == 1])
-hist(data.si$serial.interval[data.si$contact1_sexual == 2]); summary(data.si$serial.interval[data.si$contact1_sexual == 2])
-
-## Nonparametric estimation using EpiLPS
-
-
-
 ##--------------------------------------------------------------
-## Reporting multiple contacts
+## Data preparation
 
 data.si <- data[data$contacts != '', ]
 table(data.si$contact1_sexual)
@@ -45,7 +18,7 @@ table(all.contact.ids %in% data.si$ID)
 all.case.ids <- unique(c(all.contact.ids, unique(data$ID[data$contacts != ''])))
 
 data.si <- data[data$ID %in% all.case.ids, ]
-data.si <- data.si[,c(1:3,5,9:11,13:15,17,18,19,22,23,30:33,38:41,46:49,62:89,100)]
+data.si <- data.si[,c(1:3,5,9:11,13:15,17,18,19,22,23,30:33,38:41,46:49,62:89,100,111:112)]
 
 data.si$ID_orig <- data.si$ID # save original IDs
 data.si$ID <- 1:dim(data.si)[1] # IDs need to be 1 to 171
@@ -56,6 +29,43 @@ table(data.si$contact1_rel)
 # 5 = SW visited, 6 = patient (participant is a HCW), 7 = deceased person, 8 =friend,
 # 9 = neighbor, 10 = church, 11 = co-patient , 12 = sexual partner, 13 = client (shop)
 
+##--------------------------------------------------------------
+## Sexual transmission hypothesis
+
+table(data.si$transm_sexual); table(data.si$transm_repeatedcontact)
+table(data.si$transm_sexual, data.si$transm_repeatedcontact)
+# table(data.si$contact1_sexual)
+
+table(data.si$transm_sexual[data.si$contact2_id == '' & data.si$contact1_id != ''],
+      data.si$contact1_sexual[data.si$contact2_id == '' & data.si$contact1_id != ''])
+unique(data.si$transm_hyp[data.si$contact1_sexual == 2 & data.si$contact2_id == '' & data.si$contact1_id != '' & data.si$transm_sexual == 1])
+# often hypothesis is sexual, but also possible from another repeated contact --> probably that one is then included in the contacts
+
+## Set to only the sexual infector(s) if both variables indicate sexual transmission?
+for(i in 1:dim(data.si)[1]){
+  inf <- as.numeric(unlist(strsplit(data.si$contacts[i], ",")))
+  if(length(inf) > 1){
+    if(length(inf) == 2){
+      routes <- c(data.si$contact1_sexual[i], data.si$contact2_sexual[i])
+      if(1 %in% routes){
+        if(data.si$transm_sexual[i] == 1){
+          cnts <- which(routes == 1)
+          data.si$contacts[i] <- paste(c(rep(NA, 2-length(inf[cnts])), inf[cnts]), collapse = ',')
+        }
+      }
+    }else if(length(inf) == 3){
+      routes <- c(data.si$contact1_sexual[i], data.si$contact2_sexual[i], data.si$contact3_sexual[i])
+      if(1 %in% routes){
+        if(data.si$transm_sexual[i] == 1){
+          cnts <- which(routes == 1)
+          data.si$contacts[i] <- paste(c(rep(NA, 3-length(inf[cnts])), inf[cnts]), collapse = ',')
+        }
+      }
+    }
+  }
+}
+
+##--------------------------------------------------------------
 ## Initial infector-infectee matrix + transmission routes
 NCases <- length(unique(data.si$ID))
 Case <- data.si$ID
@@ -65,13 +75,8 @@ PossibleInfector <- matrix(nrow = NCases, ncol = 4)
 TransmissionRoutes <- matrix(NA, nrow = NCases, ncol = 4)
 
 for(i in 1:NCases){
+  
   inf <- as.numeric(unlist(strsplit(data.si$contacts[i], ",")))
-  infectors[[i]] <- data.si$ID[data.si$ID_orig %in% inf]
-  if(length(infectors[[i]]) > 0){
-    PossibleInfector[i, 1:length(infectors[[i]])] <- infectors[[i]]
-  }else{
-    PossibleInfector[i, 1] <- 0 # no contacts among included cases
-  }
   
   sextrans <- numeric()
   # transmission routes: 1 = sexual, 2 = other (also if not specifically sexual reported) (data columns: 36,37,38,39)
@@ -80,6 +85,14 @@ for(i in 1:NCases){
       sex <- ifelse(data.si[i, 35 + c] == 1 & !is.na(data.si[i, 35 + c]), 1, 2)
       sextrans <- c(sextrans, sex)
     }
+  }
+  sextrans <- sextrans[!is.na(inf)]
+  
+  infectors[[i]] <- data.si$ID[data.si$ID_orig %in% inf]
+  if(length(infectors[[i]]) > 0){
+    PossibleInfector[i, 1:length(infectors[[i]])] <- infectors[[i]]
+  }else{
+    PossibleInfector[i, 1] <- 0 # no contacts among included cases
   }
   
   routes[[i]] <- sextrans
@@ -113,7 +126,7 @@ rm(Case); rm(NCases); rm(i)
 library(igraph)
 
 # ## Sample networks --> VSC
-# source('code/01_baseline/functions/fun_network.R')
+# source('code/03_sensitivityII/functions/fun_network.R')
 # 
 # num.nets <- 1000
 # trees <- matrix(NA, nrow = num.nets, ncol = length(unique(data.si$ID)) + 1)
@@ -148,16 +161,17 @@ library(igraph)
 # save(onsets, file = 'code/onsets_211024.RData')
 # save(transroutes, file = 'code/routes_211024.RData')
 
+##-----------------------------------------------------------
 ## MCMC to estimate serial interval using normal distribution
 
 # Change network when changing min and max si !!!
-load('code/01_baseline/trees_221024_base.RData')
-load('code/01_baseline/onsets_221024_base.RData')
-load('code/01_baseline/routes_221024_base.RData')
+load('code/03_sensitivityII/trees_221024_sens2.RData')
+load('code/03_sensitivityII/onsets_221024_sens2.RData')
+load('code/03_sensitivityII/routes_221024_sens2.RData')
 
 # # check if all networks are unique
 # library(mgcv)
-# dim(uniquecombs(trees[,c(-1)]))
+# dim(uniquecombs(trees[1:1000,c(-1)]))
 
 trees <- trees[1:1000, ]
 onsets <- onsets[1:1000, ]
@@ -167,7 +181,7 @@ trees[,1] <- 1:dim(trees)[1]
 onsets[,1] <- 1:dim(onsets)[1]
 transroutes[,1] <- 1:dim(transroutes)[1]
 
-source('code/01_baseline/functions/fun_mcmc_si_strat.R')
+source('code/03_sensitivityII/functions/fun_mcmc_si_strat.R')
 
 nrun <- 5000000
 burnin <- 0.4
@@ -257,7 +271,6 @@ curve(dnorm(x, mean = sumstats$quantiles[3, 3], sd = sumstats$quantiles[4, 3]), 
       add = T, col = 2, lwd = 2)
 dev.off()
 
-##--------------------------------------------------
 ## Transmission pair characteristics
 Infector <- Network
 Infectee <- 1:length(Network)
@@ -328,12 +341,12 @@ for(i in 1:dim(net.matrix)[1]){
 }
 
 net.matrix["agegroup_source"] <- cut(net.matrix$source_age, c(0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 65),
-                               c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65"),
-                               include.lowest = TRUE)
-table(net.matrix$agegroup_source)
-net.matrix["agegroup_case"] <- cut(net.matrix$case_age, c(0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 65),
                                      c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65"),
                                      include.lowest = TRUE)
+table(net.matrix$agegroup_source)
+net.matrix["agegroup_case"] <- cut(net.matrix$case_age, c(0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 65),
+                                   c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65"),
+                                   include.lowest = TRUE)
 table(net.matrix$agegroup_case)
 
 age_pairs <- data.frame(xtabs(~agegroup_source + agegroup_case, net.matrix))
@@ -349,7 +362,7 @@ apply(mean.trans.mat,2,sum) # should sum to 1
 
 library(plot.matrix)
 library(RColorBrewer)
-jpeg("results/baseline/agemat.jpeg", width=10, height=10, units="cm", res=300)
+jpeg("results/sensitivity2/agemat.jpeg", width=10, height=10, units="cm", res=300)
 # par(mar=c(5.1, 4.1, 4.1, 4.1))
 plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPalette(brewer.pal(5, "GnBu")),
      fmt.key="%.0f", border=NA, asp=T, cex.axis=0.7, 
@@ -357,11 +370,10 @@ plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPale
      axis.row=list(side=2, las=2),
      fmt.cell="%.2f", text.cell=list(cex=0.5), key=NULL,#  key=list(tick=F, at=c(0,2,4,6), labels=c(0,2,4,6)), 
      breaks=seq(0,1,0.1)
-     )
+)
 dev.off()
 
-
-##------------------------------------------------------------
+##---------------------------------------------------------------------
 ## Plot network
 
 net <- graph.data.frame(edge.mat, vertex.mat, directed = T)
@@ -478,10 +490,10 @@ ecdf_obs <- ecdf(SerialInterval[[2]])
 plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
 # Non-parametric CDF
 lines(sfineO, sapply(sfineO, fitNonSexual$Fhat), type = 'l', col = 'darkblue',
-     xlab = "Serial interval (days)",
-     ylab = "Cumulative distribution function",
-     xaxt = 'n', xlim = c(min(xNonSexual$sL)-1, max(xNonSexual$sR)+1),
-     cex.lab = 2, cex.axis = 1.5, lwd = 3
+      xlab = "Serial interval (days)",
+      ylab = "Cumulative distribution function",
+      xaxt = 'n', xlim = c(min(xNonSexual$sL)-1, max(xNonSexual$sR)+1),
+      cex.lab = 2, cex.axis = 1.5, lwd = 3
 )
 title(main = 'Non-sexual transmission', cex.main = 2)
 axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)

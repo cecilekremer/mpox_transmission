@@ -305,9 +305,62 @@ for(i in 1:dim(vertex.mat)[1]){
   }
 }
 
+## Transmission matrix by age
+head(vertex.mat)
+head(edge.mat)
+
+vertex.matrix <- vertex.mat
+vertex.matrix$agenum <- NA
+for(i in 1:dim(vertex.matrix)[1]){
+  vertex.matrix$agenum[i] <- data.si$agenum[data.si$ID == i]
+}
+net.matrix <- as.data.frame(edge.mat)
+
+net.matrix$source_age <- NA
+net.matrix$case_age <- NA
+for(i in 1:dim(net.matrix)[1]){
+  net.matrix$source_age[i] <- vertex.matrix$agenum[vertex.matrix$case == net.matrix$Infector[i]]
+  net.matrix$case_age[i] <- vertex.matrix$agenum[vertex.matrix$case == net.matrix$Infectee[i]]
+}
+
+net.matrix["agegroup_source"] <- cut(net.matrix$source_age, c(0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 65),
+                                     c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65"),
+                                     include.lowest = TRUE)
+table(net.matrix$agegroup_source)
+net.matrix["agegroup_case"] <- cut(net.matrix$case_age, c(0, 2, 5, 10, 15, 20, 25, 30, 40, 50, 65),
+                                   c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65"),
+                                   include.lowest = TRUE)
+table(net.matrix$agegroup_case)
+
+age_pairs <- data.frame(xtabs(~agegroup_source + agegroup_case, net.matrix))
+trans.mat = matrix(age_pairs$Freq, ncol=10, nrow=10) # row = index, col = contact
+rownames(trans.mat) = c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65")
+colnames(trans.mat) = c("0-2", "3-5", "6-10", "11-15", "16-20", "21-25", "26-30", "31-40", "41-50", "51-65")
+trans.mat = apply(t(trans.mat),2,rev) # row = contact, col = index
+# index age groups
+N.agegroup = apply(trans.mat,2,sum) # total number of index cases in age group i
+N.mat = matrix(rep(N.agegroup,10), nrow=10, ncol=10, byrow=T)
+mean.trans.mat = trans.mat / N.mat
+apply(mean.trans.mat,2,sum) # should sum to 1
+
+library(plot.matrix)
+library(RColorBrewer)
+jpeg("results/sensitivity1/agemat.jpeg", width=10, height=10, units="cm", res=300)
+# par(mar=c(5.1, 4.1, 4.1, 4.1))
+plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPalette(brewer.pal(5, "GnBu")),
+     fmt.key="%.0f", border=NA, asp=T, cex.axis=0.7, 
+     axis.col=list(side=1, las=2), 
+     axis.row=list(side=2, las=2),
+     fmt.cell="%.2f", text.cell=list(cex=0.5), key=NULL,#  key=list(tick=F, at=c(0,2,4,6), labels=c(0,2,4,6)), 
+     breaks=seq(0,1,0.1)
+)
+dev.off()
+
+##--------------------------------------------------------------
+## Plot network
+
 net <- graph.data.frame(edge.mat, vertex.mat, directed = T)
 
-## Plot network
 library(extrafont)
 library(RColorBrewer)
 colr2 <- c("#B569DB", "#2A9832", "#F39110")
