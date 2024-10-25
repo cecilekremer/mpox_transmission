@@ -2,32 +2,6 @@
 load('data/contact_data.RData')
 data <- data.contact.clean
 
-##---------------------------------------------------------------
-## Individuals reporting only one contact (N = 86)
-
-data.si <- (data[data$contact1_id != '' & data$contact2_id == '' & data$contact3_id == '', ])
-data.si <- data.si[data.si$contacts != '', ]
-all(nchar(data.si$contacts) <= 3 )
-data.si$contacts <- as.numeric(data.si$contacts)
-
-summary(data.si$symptom.onset)
-data.si$symptom.onset.secondary <- NA
-for(i in 1:dim(data.si)[1]){
-  idcon <- data.si$contacts[i]
-  dt <- data$symptom.onset[data$ID == idcon] # take from full dataset
-  data.si$symptom.onset.secondary[i] <- ifelse(is.na(dt), NA, as.Date(dt))
-}
-data.si$symptom.onset.secondary <- as.Date(data.si$symptom.onset.secondary)
-
-data.si$serial.interval <- as.numeric(data.si$symptom.onset.secondary - data.si$symptom.onset)
-
-summary(data.si$serial.interval)
-hist(data.si$serial.interval[data.si$contact1_sexual == 1]); summary(data.si$serial.interval[data.si$contact1_sexual == 1])
-hist(data.si$serial.interval[data.si$contact1_sexual == 2]); summary(data.si$serial.interval[data.si$contact1_sexual == 2])
-
-## Nonparametric estimation using EpiLPS
-
-
 
 ##--------------------------------------------------------------
 ## Reporting multiple contacts
@@ -56,6 +30,8 @@ table(data.si$contact1_rel)
 # 5 = SW visited, 6 = patient (participant is a HCW), 7 = deceased person, 8 =friend,
 # 9 = neighbor, 10 = church, 11 = co-patient , 12 = sexual partner, 13 = client (shop)
 
+table(data.si$agecat)
+
 ## Initial infector-infectee matrix + transmission routes
 NCases <- length(unique(data.si$ID))
 Case <- data.si$ID
@@ -73,16 +49,17 @@ for(i in 1:NCases){
     PossibleInfector[i, 1] <- 0 # no contacts among included cases
   }
   
-  sextrans <- numeric()
-  # transmission routes: 1 = sexual, 2 = other (also if not specifically sexual reported) (data columns: 36,37,38,39)
+  agetrans <- numeric()
+  # source case age: 1 = +18, 2 = <18
   if(length(inf) > 0){
     for(c in 1:length(inf)){
-      sex <- ifelse(data.si[i, 35 + c] == 1 & !is.na(data.si[i, 35 + c]), 1, 2)
-      sextrans <- c(sextrans, sex)
+      age <- ifelse(data.si$agecat[i] == 1, 1, 2)
+      # age <- ifelse(data.si[i, 35 + c] == 1 & !is.na(data.si[i, 35 + c]), 1, 2)
+      agetrans <- c(agetrans, age)
     }
   }
   
-  routes[[i]] <- sextrans
+  routes[[i]] <- agetrans
   if(length(routes[[i]]) > 0){
     TransmissionRoutes[i, 1:length(routes[[i]])] <- routes[[i]]
   }
@@ -113,7 +90,7 @@ rm(Case); rm(NCases); rm(i)
 library(igraph)
 
 # ## Sample networks --> VSC
-# source('code/functions/fun_network.R')
+# source('code/05_ageSI/functions/fun_network.R')
 # 
 # num.nets <- 1000
 # trees <- matrix(NA, nrow = num.nets, ncol = length(unique(data.si$ID)) + 1)
@@ -124,6 +101,7 @@ library(igraph)
 # for(i in 1:num.nets){
 #   net <- setup_network(case.ids = data.si$ID,
 #                        cluster = NA,
+#                        ages = data.si$agecat,
 #                        contact.list = data.si$contact_list,
 #                        transm.list = data.si$transmission_list,
 #                        infector.mat = PossibleInfector,
@@ -144,30 +122,36 @@ library(igraph)
 # 
 # }
 # # proc.time() - ptm
-# save(trees, file = 'code/trees_251024.RData')
-# save(onsets, file = 'code/onsets_251024.RData')
-# save(transroutes, file = 'code/routes_251024.RData')
+# save(trees, file = 'code/trees_211024.RData')
+# save(onsets, file = 'code/onsets_211024.RData')
+# save(transroutes, file = 'code/routes_211024.RData')
 
 ## MCMC to estimate serial interval using normal distribution
 
 # Change network when changing min and max si !!!
-load('code/01_baseline/trees_221024_base.RData')
-load('code/01_baseline/onsets_221024_base.RData')
-load('code/01_baseline/routes_221024_base.RData')
+load('code/05b_ageSIadult/trees_221024_age2.RData')
+load('code/05b_ageSIadult/onsets_221024_age2.RData')
+load('code/05b_ageSIadult/routes_221024_age2.RData')
 
 # # check if all networks are unique
 # library(mgcv)
 # dim(uniquecombs(trees[,c(-1)]))
 
+trees <- trees[!is.na(trees[,1]), ]
+dim(trees)
+
 trees <- trees[1:1000, ]
-onsets <- onsets[1:1000, ]
-transroutes <- transroutes[1:1000, ]
+tree.ids <- trees[,1]
+onsets <- onsets[tree.ids, ]
+transroutes <- transroutes[tree.ids, ]
 
 trees[,1] <- 1:dim(trees)[1]
 onsets[,1] <- 1:dim(onsets)[1]
 transroutes[,1] <- 1:dim(transroutes)[1]
+dim(trees) == dim(onsets) 
+dim(onsets) == dim(transroutes)
 
-source('code/functions/fun_mcmc_si.R')
+source('code/05b_ageSIadult/functions/fun_mcmc_si_strat.R')
 
 nrun <- 5000000
 burnin <- 0.4
@@ -192,10 +176,10 @@ length(unique(out$networkIDs))
 library(coda)
 # thin <- 1
 chain1 <- coda::mcmc(out$parms[seq(1, (nrun-(burnin*nrun))/thin), ])
-colnames(chain1) = c("mean SI", "sd SI")
-autocorr.plot(chain1[,c(1,2)]) # see if thinning has to be increased
-jpeg('results/SI_overall/plotConvergence.jpeg', width = 30, height = 30, units = 'cm', res = 300)
-plot(chain1[,c(1,2)])
+colnames(chain1) = c("mean SI adult","sd SI adult","mean SI child","sd SI child")
+autocorr.plot(chain1[,c(1,2,3,4)]) # see if thinning has to be increased
+jpeg('results/ageAdult/plotConvergence.jpeg', width = 30, height = 30, units = 'cm', res = 300)
+plot(chain1[,c(1,2,3,4)])
 dev.off()
 summary(chain1); sumstats <- summary(chain1)
 
@@ -240,22 +224,21 @@ table(Route)/sum(table(Route)) # 37.23% sexual transmission
 case.ids <- data.si$ID
 IsContributorToLikel <- case.ids[Network != 0]
 IsNotContributorToLikel <- case.ids[!(case.ids %in% IsContributorToLikel)]
-# SerialInterval <- list()
-# for(r in c(1,2)){
-  # SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
-# }
-SerialInterval <- Time[IsContributorToLikel] - Time[Network[IsContributorToLikel]]
+SerialInterval <- list()
+for(r in c(1,2)){
+  SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
+}
 
-jpeg('results/SI_overall/plotFitMostLikely.jpeg', width = 30, height = 20, units = 'cm', res = 300)
-par(mfrow = c(1, 1))
-hist(SerialInterval, prob = T, xlim = c(-20, 40), breaks = 20, 
-     main = paste0('All transmission (n = ', length(SerialInterval), ')'), xlab = 'Serial interval') 
+jpeg('results/ageAdult/plotFitMostLikely.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+par(mfrow = c(2, 1))
+hist(SerialInterval[[1]], prob = T, xlim = c(-20, 40), breaks = 20, 
+     main = paste0('Adult source case (n = ', length(SerialInterval[[1]]), ')'), xlab = 'Serial interval') 
 curve(dnorm(x, mean = sumstats$quantiles[1, 3], sd = sumstats$quantiles[2, 3]), from = -20, to = 40,
       add = T, col = 2, lwd = 2)
-# hist(SerialInterval[[2]], prob = T, xlim = c(-20, 40), breaks = 20, 
-#      main = paste0('Non-sexual transmission (n = ', length(SerialInterval[[2]]), ')'), xlab = 'Serial interval') 
-# curve(dnorm(x, mean = sumstats$quantiles[1, 3], sd = sumstats$quantiles[2, 3]), from = -20, to = 40,
-#       add = T, col = 2, lwd = 2)
+hist(SerialInterval[[2]], prob = T, xlim = c(-20, 40), breaks = 20, 
+     main = paste0('Child source case (n = ', length(SerialInterval[[2]]), ')'), xlab = 'Serial interval') 
+curve(dnorm(x, mean = sumstats$quantiles[3, 3], sd = sumstats$quantiles[4, 3]), from = -20, to = 40,
+      add = T, col = 2, lwd = 2)
 dev.off()
 
 ##--------------------------------------------------
@@ -268,7 +251,7 @@ tree <- cbind(Infector, Infectee, Type)
 tree <- tree[which(Infector != 0), ]
 library(igraph)
 g <- graph_from_edgelist(tree[,c(1,2)])
-source('code/01_baseline/fun_network.R')
+source('code/05b_ageSIadult/functions/fun_network.R')
 length(FindCycles(g)) == 0
 
 edge.mat <- tree
@@ -350,7 +333,7 @@ apply(mean.trans.mat,2,sum) # should sum to 1
 
 library(plot.matrix)
 library(RColorBrewer)
-jpeg("results/SI_overall/agemat.jpeg", width=10, height=10, units="cm", res=300)
+jpeg("results/ageAdult/agemat.jpeg", width=10, height=10, units="cm", res=300)
 # par(mar=c(5.1, 4.1, 4.1, 4.1))
 plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPalette(brewer.pal(5, "GnBu")),
      fmt.key="%.0f", border=NA, asp=T, cex.axis=0.7, 
@@ -371,8 +354,8 @@ library(extrafont)
 library(RColorBrewer)
 colr2 <- c("#B569DB", "#2A9832", "#F39110")
 V(net)$color <- colr2[V(net)$age]
-edge.col <- c("red","black")
-E(net)$color <- edge.col[E(net)$Type]
+# edge.col <- c("red","black")
+# E(net)$color <- edge.col[E(net)$Type]
 # v.shape <- c('csquare', 'crectangle', 'square', 'rectangle')
 v.shape <- c('circle', 'square')
 # v.shape.occ <- c('filled square', 'filled circle', NA)
@@ -381,16 +364,16 @@ V(net)$shape <- v.shape[V(net)$gender]
 v.size <- c(5,5,3,3)
 V(net)$size <- v.size[V(net)$gender.occupation]
 
-jpeg('results/SI_overall/plotNetwork.jpeg', width = 50, height = 50, units = 'cm', res = 300)
+jpeg('results/ageAdult/plotNetwork.jpeg', width = 50, height = 50, units = 'cm', res = 300)
 par(mfrow = c(1,1))
-plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape,
+plot(net, vertex.size = V(net)$size, #edge.color = E(net)$color, 
+     vertex.shape = V(net)$shape,
      vertex.label = '', layout=layout.fruchterman.reingold,
      vertex.label.cex = 1.2, edge.arrow.size = 0.5)
-legend('topleft', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other", "sexual"),
-       col = c("#B569DB", "#2A9832", "#F39110", 1, 1, 1, 1, "red"),
-       lty = c(rep(NA, 7), 1),
-       pch = c(rep(16, 3), 1, 1, 0, 0, NA),
-       pt.cex = c(3,3,3,5,3,5,3,NA),
+legend('topleft', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other"),
+       col = c("#B569DB", "#2A9832", "#F39110", 1, 1, 1, 1),
+       pch = c(rep(16, 3), 1, 1, 0, 0),
+       pt.cex = c(3,3,3,5,3,5,3),
        cex = 1.2,
        y.intersp = 2)
 dev.off()
@@ -403,7 +386,7 @@ dev.off()
 ##-------------------------------------------------------------------------------------------
 
 library(EpiLPS)
-source('code/functions/estimSI_boot.R')
+source('code/05b_ageSIadult/functions/estimSI_boot.R')
 
 xS <- data.frame(sL = unlist(SerialInterval) - 0.5, sR = unlist(SerialInterval) + 0.5)
 set.seed(2022)
@@ -411,7 +394,7 @@ fitS <- estimSI_boot(x = xS)
 round(fitS$estim, 2)
 
 # Plot cdf
-jpeg('results/SI_overall/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+jpeg('results/ageAdult/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
 bsLO <- min(xS$sL) - 0.5
 bsRO <- max(xS$sR) + 0.5
 sfineO <- seq(bsLO, bsRO, length = 100)
@@ -427,9 +410,6 @@ lines(sfineO, sapply(sfineO, fitS$Fhat), type = 'l', col = 'darkblue',
       xaxt = 'n', xlim = c(min(xS$sL)-1, max(xS$sR)+1),
       cex.lab = 2, cex.axis = 1.5, lwd = 3
 )
-lines(sfineO, sapply(sfineO, pnorm, mean = sumstats$quantiles[1, 3], sd = sumstats$quantiles[2, 3]),
-      col = '#54C8F0', lwd = 3, lty = 2)
-legend('topleft', c('Normal CDF','Non-parametric CDF'), col = c('#54C8F0','darkblue'), lwd = c(3,3), cex = 1.5)
 title(main = 'All transmission', cex.main = 2)
 axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
 # # Normal CDF
@@ -451,6 +431,118 @@ for(j in 1:length(up_95)){
 # lines(x = c(sumstats$quantiles[3, 1], sumstats$quantiles[3,5]), y = c(0.5, 0.5),
 #       type = "l", col = "#54C8F0", lwd = 3, lty = 2)
 # lines(x = sumstats$quantiles[3, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)
+dev.off()
+
+##-----------------------------------------------------------------------------------
+## Child source case transmission
+xAdolescent <- data.frame(sL = SerialInterval[[2]] - 0.5, sR = SerialInterval[[2]] + 0.5)
+set.seed(2022)
+fitAdolescent <- estimSI_boot(x = xAdolescent)
+round(fitAdolescent$estim, 2)
+
+# Plot cdf
+bsLO <- min(xAdolescent$sL) - 0.5
+bsRO <- max(xAdolescent$sR) + 0.5
+sfineO <- seq(bsLO, bsRO, length = 100)
+dsfineO <- sfineO[2] - sfineO[1]
+BO <- nrow(fitAdolescent$bootsamples)
+sboot_cdfO <- matrix(0, nrow = BO, ncol = 100)
+for(b in 1:BO){
+  fsbootO <- histosmooth(fitAdolescent$bootsamples[b,], xl = bsLO, xr = bsRO, K = 12)
+  sboot_densO <- sapply(sfineO, fsbootO$fdens)
+  sboot_densO <- sboot_densO/sum(sboot_densO * dsfineO)
+  sboot_cdfO[b,] <- cumsum(sboot_densO * dsfineO)
+  print(b)
+}
+
+jpeg('results/ageAdult/plotCDFchild.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+par(mfrow = c(1,1))
+# Empirical CDF
+ecdf_obs <- ecdf(SerialInterval[[2]])
+plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
+# Non-parametric CDF
+lines(sfineO, sapply(sfineO, fitAdolescent$Fhat), type = 'l', col = 'darkblue',
+      xlab = "Serial interval (days)",
+      ylab = "Cumulative distribution function",
+      xaxt = 'n', xlim = c(min(xAdolescent$sL)-1, max(xAdolescent$sR)+1),
+      cex.lab = 2, cex.axis = 1.5, lwd = 3
+)
+title(main = 'Source case <18y', cex.main = 2)
+axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
+# Normal CDF
+lines(sfineO, sapply(sfineO, pnorm, mean = sumstats$quantiles[3, 3], sd = sumstats$quantiles[4, 3]),
+      col = '#54C8F0', lwd = 3, lty = 2)
+legend('topleft', c('Normal CDF','Non-parametric CDF'), col = c('#54C8F0','darkblue'), lwd = c(3,3), cex = 1.5)
+# 95%CI for selected percentiles
+low_95 <- fitAdolescent$estim$CI95p_l[3:7] 
+up_95 <- fitAdolescent$estim$CI95p_r[3:7]
+perc <- c(0.05,0.25,0.50,0.75,0.95)
+perctxt <- paste0(perc * 100, "th percentile")
+for(j in 1:length(up_95)){
+  lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
+        col = "darkblue", lwd = 3, lty = 1)
+  lines(x = fitAdolescent$estim$Estim[3:7], perc, type = "p", pch = 16,
+        col = "darkblue", cex = 2)
+  text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
+}
+lines(x = c(sumstats$quantiles[3, 1], sumstats$quantiles[3,5]), y = c(0.5, 0.5),
+      type = "l", col = "#54C8F0", lwd = 3, lty = 2)
+lines(x = sumstats$quantiles[3, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)
+dev.off()
+
+##-----------------------------------------------------------------------------------
+## Adult source case transmission
+xAdult <- data.frame(sL = SerialInterval[[1]] - 0.5, sR = SerialInterval[[1]] + 0.5)
+set.seed(2022)
+fitAdult <- estimSI_boot(x = xAdult)
+round(fitAdult$estim, 2)
+
+# Plot cdf
+bsLO <- min(xAdult$sL) - 0.5
+bsRO <- max(xAdult$sR) + 0.5
+sfineO <- seq(bsLO, bsRO, length = 100)
+dsfineO <- sfineO[2] - sfineO[1]
+BO <- nrow(fitAdult$bootsamples)
+sboot_cdfO <- matrix(0, nrow = BO, ncol = 100)
+for(b in 1:BO){
+  fsbootO <- histosmooth(fitAdult$bootsamples[b,], xl = bsLO, xr = bsRO, K = 12)
+  # fsbootO <- histosmooth(fitSexual$bootsamples[b,], K = 12)
+  sboot_densO <- sapply(sfineO, fsbootO$fdens)
+  sboot_densO <- sboot_densO/sum(sboot_densO * dsfineO)
+  sboot_cdfO[b,] <- cumsum(sboot_densO * dsfineO)
+  print(b)
+}
+
+jpeg('results/ageAdult/plotCDFadult.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+par(mfrow = c(1,1))
+# Empirical CDF
+ecdf_obs <- ecdf(SerialInterval[[1]])
+plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
+# Non-parametric CDF
+lines(sfineO, sapply(sfineO, fitAdult$Fhat), type = 'l', col = 'darkblue',
+      xlab = "Serial interval (days)",
+      ylab = "Cumulative distribution function",
+      xaxt = 'n', xlim = c(min(xAdult$sL)-1, max(xAdult$sR)+1),
+      cex.lab = 2, cex.axis = 1.5, lwd = 3
+)
+title(main = 'Source case >=18y', cex.main = 2)
+axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
+# Normal CDF
+lines(sfineO, sapply(sfineO, pnorm, mean = sumstats$quantiles[1, 3], sd = sumstats$quantiles[1, 3]),
+      col = '#54C8F0', lwd = 3, lty = 2)
+legend('topleft', c('Normal CDF','Non-parametric CDF'), col = c('#54C8F0','darkblue'), lwd = c(3,3), cex = 1.5)
+# 95%CI for selected percentiles
+low_95 <- fitAdult$estim$CI95p_l[3:7] 
+up_95 <- fitAdult$estim$CI95p_r[3:7]
+perc <- c(0.05,0.25,0.50,0.75,0.95)
+perctxt <- paste0(perc * 100, "th percentile")
+for(j in 1:length(up_95)){
+  lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
+        col = "darkblue", lwd = 3, lty = 1)
+  lines(x = fitAdult$estim$Estim[3:7], perc, type = "p", pch = 16,
+        col = "darkblue", cex = 2)
+  text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
+}
 lines(x = c(sumstats$quantiles[1, 1], sumstats$quantiles[1,5]), y = c(0.5, 0.5),
       type = "l", col = "#54C8F0", lwd = 3, lty = 2)
 lines(x = sumstats$quantiles[1, 3], 0.5, type = "p", pch = 16, col = "#54C8F0", cex = 2)

@@ -4,8 +4,8 @@ estimate_si <- function(case.ids,
                         onsets,
                         routes,
                         max.si,
-                        start.parms = c(1, 1, 1, 1), # mean1 = theta[1], sd1 = theta[2], mean2 = theta[3], sd2 = theta[4]
-                        tuning.parms = c(0.1, 0.1, 0.1, 0.1),
+                        start.parms = c(1, 1, 1, 1, 1, 1), # mean1 = theta[1], sd1 = theta[2], mean2 = theta[3], sd2 = theta[4]
+                        tuning.parms = c(0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1),
                         mcmc.runs = 1000000,
                         burnin = 0.3,
                         thin = 100,
@@ -39,28 +39,33 @@ estimate_si <- function(case.ids,
   IsContributorToLikel <- case.ids[Network != 0]
   IsNotContributorToLikel <- case.ids[!(case.ids %in% IsContributorToLikel)]
   
-  ## Sexual (1) vs non-sexual (2) transmission
+  ## Transmission by age of source case: 1 = 18+, 2 = 12-17, 3 = <12
   SerialInterval <- list()
-  for(r in c(1,2)){
+  for(r in c(1,2,3)){
     SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
   }
   
   ## Likelihood
   likelihood <- function(){
     
-    L1 <- c(); L2 <- c()
+    L1 <- c(); L2 <- c(); L3 <- c()
 
-    # Sexual
+    # Age 18+
     for(i in 1:length(IsContributorToLikel[Route[IsContributorToLikel] == 1])){
       L1[i] <- dnorm(SerialInterval[[1]][i], mean = theta[1], sd = theta[2], log = FALSE)
     }
     
-    # Non-sexual
+    # Age 12-17
     for(i in 1:length(IsContributorToLikel[Route[IsContributorToLikel] == 2])){
       L2[i] <- dnorm(SerialInterval[[2]][i], mean = theta[3], sd = theta[4], log = FALSE)
     }
     
-    return(sum(log(1e-50 + L1)) + sum(log(1e-50 + L2)))
+    # Age <12
+    for(i in 1:length(IsContributorToLikel[Route[IsContributorToLikel] == 3])){
+      L3[i] <- dnorm(SerialInterval[[3]][i], mean = theta[5], sd = theta[6], log = FALSE)
+    }
+    
+    return(sum(log(1e-50 + L1)) + sum(log(1e-50 + L2)) + sum(log(1e-50 + L3)))
     
   }
   
@@ -73,7 +78,10 @@ estimate_si <- function(case.ids,
     mu2.prior <- dunif(theta[3], 0, max.si)
     sd2.prior <- dunif(theta[4], 0, 50)
     
-    return(log(1e-50+mu1.prior) + log(1e-50+sd1.prior) + log(1e-50+mu2.prior) + log(1e-50+sd2.prior))
+    mu3.prior <- dunif(theta[5], 0, max.si)
+    sd3.prior <- dunif(theta[6], 0, 50)
+    
+    return(log(1e-50+mu1.prior) + log(1e-50+sd1.prior) + log(1e-50+mu2.prior) + log(1e-50+sd2.prior) + log(1e-50+mu3.prior) + log(1e-50+sd3.prior))
     
   }
   
@@ -88,7 +96,7 @@ estimate_si <- function(case.ids,
   ##---------------------------- MCMC algorithm -------------------------------##
   
   ## Initial values
-  AcceptedTheta <- theta <- c(start.parms[1], start.parms[2], start.parms[3], start.parms[4])
+  AcceptedTheta <- theta <- c(start.parms[1], start.parms[2], start.parms[3], start.parms[4], start.parms[5], start.parms[6])
   
   P <- posterior()
   AcceptedP <- P
@@ -142,7 +150,7 @@ estimate_si <- function(case.ids,
       
       ## Sexual (1) vs non-sexual (2) transmission
       SerialInterval <- list()
-      for(r in c(1,2)){
+      for(r in c(1,2,3)){
         SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
       }
             
@@ -159,7 +167,7 @@ estimate_si <- function(case.ids,
       
       ## Sexual (1) vs non-sexual (2) transmission
       SerialInterval <- list()
-      for(r in c(1,2)){
+      for(r in c(1,2,3)){
         SerialInterval[[r]] <- Time[IsContributorToLikel[Route[IsContributorToLikel] == r]] - Time[Network[IsContributorToLikel[Route[IsContributorToLikel] == r]]]
       }
       
@@ -174,6 +182,12 @@ estimate_si <- function(case.ids,
       
       theta[4] <- runif(1, AcceptedTheta[4] - tuning[4], AcceptedTheta[4] + tuning[4])
       if(theta[4] < 0) theta[4] <- AcceptedTheta[4]
+      
+      theta[5] <- runif(1, AcceptedTheta[5] - tuning[5], AcceptedTheta[5] + tuning[5])
+      # if(theta[1] < 0) theta[1] <- AcceptedTheta[1]
+      
+      theta[6] <- runif(1, AcceptedTheta[6] - tuning[6], AcceptedTheta[6] + tuning[6])
+      if(theta[6] < 0) theta[6] <- AcceptedTheta[6]
       
       
     }
@@ -215,11 +229,13 @@ estimate_si <- function(case.ids,
       SaveP[a] <- AcceptedP
       SaveL[a] <- AcceptedL
       
-      par(mfrow = c(2, 2))
-      plot(Savetheta[,1], type = 'l', ylab = 'Mean SI sexual')
-      plot(Savetheta[,2], type = 'l', ylab = 'SD SI sexual')
-      plot(Savetheta[,3], type = 'l', ylab = 'Mean SI non-sexual')
-      plot(Savetheta[,4], type = 'l', ylab = 'SD SI non-sexual')
+      par(mfrow = c(3, 2))
+      plot(Savetheta[,1], type = 'l', ylab = 'Mean SI 18+')
+      plot(Savetheta[,2], type = 'l', ylab = 'SD SI 18+')
+      plot(Savetheta[,3], type = 'l', ylab = 'Mean SI 12-17')
+      plot(Savetheta[,4], type = 'l', ylab = 'SD SI 12-17')
+      plot(Savetheta[,5], type = 'l', ylab = 'Mean SI <12')
+      plot(Savetheta[,6], type = 'l', ylab = 'SD SI <12')
       # plot(SaveP, type = 'l', ylab = 'Posterior')
       
     }

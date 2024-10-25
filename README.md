@@ -17,7 +17,7 @@
 
 * ***Serial interval*** MCMC: sensitivity analysis -> ~if transmission hypothesis is sexual, only include the known sexual contacts (not other contacts)~ OR assign higher probability of being the infector?
 
-* ***Serial interval*** MCMC: stratified by age group of source case
+* ~***Serial interval*** MCMC: stratified by age group of source case~
 
 * ~***Serial interval*** MCMC: stratified by household vs non-household~
 

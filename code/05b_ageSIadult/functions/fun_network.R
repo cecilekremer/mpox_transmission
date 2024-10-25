@@ -23,6 +23,7 @@ FindCycles = function(g) {
 
 setup_network <- function(case.ids, # ordered case IDs
                           cluster, # cluster IDs ordered by case ID
+                          ages,
                           contact.list, 
                           transm.list,
                           infector.mat, # initial infector-infectee matrix
@@ -42,25 +43,7 @@ setup_network <- function(case.ids, # ordered case IDs
   timeLapsed <- max(as.numeric(helper.date - symptom.onset), na.rm = T) # max. time between questionnaire and symptom onset
   
   for(i in case.ids){
-    
-    # if(is.na(Time[i]) && !is.na(contact.list[[i]][1])){
-    #   
-    #   contacts <- contact.list[[i]]
-    #   # if all onset times of contacts are also missing
-    #   if(length(contacts) == sum(is.na(Time[contacts]))){
-    #     minDate <- min(Time[cluster == cluster[i]], na.rm = T) - min.si
-    #     maxDate <- Time2[i]
-    #     Time[i] <- round(runif(1, minDate, maxDate))
-    #     if(Time[i] <= 0) Time[i] <- 1
-    #   }else{
-    #     minDate <- min(Time[contacts], na.rm = T) - min.si
-    #     maxDate <- Time2[i]
-    #     Time[i] <- round(runif(1, minDate, maxDate))
-    #     if(Time[i] <= 0) Time[i] <- 1
-    #   }
-    #   
-    # }else if(is.na(Time[i]) && is.na(contact.list[[i]][1])){
-    
+
     if(is.na(Time[i])){
       
       # sample symptom onset times if no contact given
@@ -95,9 +78,9 @@ setup_network <- function(case.ids, # ordered case IDs
   for(i in 1:NCases){
     for(j in 1:NCases){
       if(i != j){
-        if(inf.mat[i, j] == 1){
-          inf.mat[j, i] <- 1
-          trans.mat[j, i] <- trans.mat[i, j]
+        if(inf.mat[i, j] == 1){ # j is possible infector of i
+          inf.mat[j, i] <- 1 # then i is possible infector of j
+          trans.mat[j, i] <- ifelse(ages[i] == 1, 1, 2)
         }
       }
     }
