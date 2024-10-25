@@ -19,7 +19,7 @@
 
 * ***Serial interval*** MCMC: stratified by age group of source case
 
-* ***Serial interval*** MCMC: stratified by household vs non-household
+* ~***Serial interval*** MCMC: stratified by household vs non-household~
 
 * ***Serial interval***: regression based on most likely network --> factors based on characteristics of source case (age, gender, transmission route, HH status, sex worker, ...)
 
