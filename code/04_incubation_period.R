@@ -29,47 +29,97 @@ data <- data[!is.na(data$contact1_included) | !is.na(data$contact2_included) | !
 data <- data[!is.na(data$symptom.onset),]
 dim(data)
 
-max.int <- 24 # change for sensitivity analysis
+max.int <- 21 # change for sensitivity analysis
+
+# ## Using date of first symptoms
+# library(dplyr)
+# data <- data %>%
+#   group_by(ID) %>%
+#   mutate(
+#     # exposure_lower = as.Date(symptom.onset - 21),
+#     exposure_lower = min(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - max.int))], 
+#                          contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - max.int))], 
+#                          contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - max.int))], 
+#                          contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - max.int))], 
+#                          na.rm = T),
+#     exposure_upper = max(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - max.int))], 
+#                          contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - max.int))], 
+#                          contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - max.int))], 
+#                          contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - max.int))], 
+#                          na.rm = T)
+#   )
+# data <- data[!is.infinite((data$exposure_upper)), ]
+# dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
+# sum(data$exposure_upper >= data$symptom.onset, na.rm = T)
+# data$exposure_lower <- ifelse(data$exposure_lower == data$exposure_upper, as.Date(data$symptom.onset - max.int), data$exposure_lower)
+# data$exposure_lower <- as.Date(data$exposure_lower); summary(data$exposure_lower)
+# 
+# data$exposureDuration <- as.numeric(data$exposure_upper - data$exposure_lower)
+# summary(data$exposureDuration)
+# sum(data$exposureDuration == 0); sum(data$exposureDuration != 0)
+# 
+# data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,19,100:104,111,112,128:130)]
+# save(data.incubation, file = 'data/data_exposure_sens24d.RData')
+# 
+# # Dates in numeric format
+# minDate <- min(data.incubation$symptom.onset, data.incubation$exposure_lower, data.incubation$exposure_upper)
+# data.incubation$symptom.onset.num <- as.numeric(data.incubation$symptom.onset - minDate) + 1
+# data.incubation$exposure.lower.num <- as.numeric(data.incubation$exposure_lower - minDate) + 1
+# data.incubation$exposure.upper.num <- as.numeric(data.incubation$exposure_upper - minDate) + 1
+# 
+# summary(data.incubation$exposureDuration)
+# sum(data.incubation$exposureDuration > 0)
+# sum(data.incubation$symptom.onset < data.incubation$exposure.upper.num)
+# sum(data.incubation$symptom.onset < data.incubation$exposure.lower.num)
+# 
+# data.stan <- data.incubation[data.incubation$exposureDuration > 0, ]
+# dim(data.stan)
+
+## Using onset of rash
+data <- data[!is.na(data$rash_onset), ]
+dim(data)
+
+summary(as.numeric(as.Date(data$rash_onset) - as.Date(data$symptom.onset)))
 
 library(dplyr)
 data <- data %>%
   group_by(ID) %>%
   mutate(
-    # exposure_lower = as.Date(symptom.onset - 21),
-    exposure_lower = min(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - max.int))], 
-                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - max.int))], 
-                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - max.int))], 
-                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - max.int))], 
+    # exposure_lower = as.Date(rash_onset - 21),
+    exposure_lower = min(contact1_lastcontact[(contact1_lastcontact < rash_onset) & (contact1_lastcontact > (rash_onset - max.int))], 
+                         contact2_lastcontact[(contact2_lastcontact < rash_onset) & (contact2_lastcontact > (rash_onset - max.int))], 
+                         contact3_lastcontact[(contact3_lastcontact < rash_onset) & (contact3_lastcontact > (rash_onset - max.int))], 
+                         contact4_lastcontact[(contact4_lastcontact < rash_onset) & (contact4_lastcontact > (rash_onset - max.int))], 
                          na.rm = T),
-    exposure_upper = max(contact1_lastcontact[(contact1_lastcontact < symptom.onset) & (contact1_lastcontact > (symptom.onset - max.int))], 
-                         contact2_lastcontact[(contact2_lastcontact < symptom.onset) & (contact2_lastcontact > (symptom.onset - max.int))], 
-                         contact3_lastcontact[(contact3_lastcontact < symptom.onset) & (contact3_lastcontact > (symptom.onset - max.int))], 
-                         contact4_lastcontact[(contact4_lastcontact < symptom.onset) & (contact4_lastcontact > (symptom.onset - max.int))], 
+    exposure_upper = max(contact1_lastcontact[(contact1_lastcontact < rash_onset) & (contact1_lastcontact > (rash_onset - max.int))], 
+                         contact2_lastcontact[(contact2_lastcontact < rash_onset) & (contact2_lastcontact > (rash_onset - max.int))], 
+                         contact3_lastcontact[(contact3_lastcontact < rash_onset) & (contact3_lastcontact > (rash_onset - max.int))], 
+                         contact4_lastcontact[(contact4_lastcontact < rash_onset) & (contact4_lastcontact > (rash_onset - max.int))], 
                          na.rm = T)
   )
 data <- data[!is.infinite((data$exposure_upper)), ]
-dim(data); head(data[,c("ID","date","symptom.onset","exposure_lower","exposure_upper")])
-sum(data$exposure_upper >= data$symptom.onset, na.rm = T)
-data$exposure_lower <- ifelse(data$exposure_lower == data$exposure_upper, as.Date(data$symptom.onset - max.int), data$exposure_lower)
+dim(data); head(data[,c("ID","date","rash_onset","exposure_lower","exposure_upper")])
+sum(data$exposure_upper >= data$rash_onset, na.rm = T)
+data$exposure_lower <- ifelse(data$exposure_lower == data$exposure_upper, as.Date(data$rash_onset - max.int), data$exposure_lower)
 data$exposure_lower <- as.Date(data$exposure_lower); summary(data$exposure_lower)
 
 data$exposureDuration <- as.numeric(data$exposure_upper - data$exposure_lower)
 summary(data$exposureDuration)
 sum(data$exposureDuration == 0); sum(data$exposureDuration != 0)
 
-data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,19,100:104,111,112,128:130)]
-save(data.incubation, file = 'data/data_exposure_sens24d.RData')
+data.incubation <- data[,c(1,2,5,9,10,11,13,14,15,17,18,19,100:104,111,112,124:133)]
+save(data.incubation, file = 'data/data_exposure_rash.RData')
 
 # Dates in numeric format
-minDate <- min(data.incubation$symptom.onset, data.incubation$exposure_lower, data.incubation$exposure_upper)
-data.incubation$symptom.onset.num <- as.numeric(data.incubation$symptom.onset - minDate) + 1
+minDate <- min(data.incubation$rash_onset, data.incubation$exposure_lower, data.incubation$exposure_upper)
+data.incubation$rash.onset.num <- as.numeric(data.incubation$rash_onset - minDate) + 1
 data.incubation$exposure.lower.num <- as.numeric(data.incubation$exposure_lower - minDate) + 1
 data.incubation$exposure.upper.num <- as.numeric(data.incubation$exposure_upper - minDate) + 1
 
 summary(data.incubation$exposureDuration)
 sum(data.incubation$exposureDuration > 0)
-sum(data.incubation$symptom.onset < data.incubation$exposure.upper.num)
-sum(data.incubation$symptom.onset < data.incubation$exposure.lower.num)
+sum(data.incubation$rash_onset < data.incubation$exposure.upper.num)
+sum(data.incubation$rash_onset < data.incubation$exposure.lower.num)
 
 data.stan <- data.incubation[data.incubation$exposureDuration > 0, ]
 dim(data.stan)
@@ -89,7 +139,7 @@ options(mc.cores=parallel::detectCores())
 input_data <- list(N = length(data.stan$exposure.lower.num),
                    tStartExposure = data.stan$exposure.lower.num,
                    tEndExposure = data.stan$exposure.upper.num,
-                   tSymptomOnset = data.stan$symptom.onset.num
+                   tSymptomOnset = data.stan$rash.onset.num
 )
 
 # Stan model for different distributions
@@ -212,8 +262,10 @@ library(EpiLPS)
 # Model computes a semi-parametric fit to the data and compares it with classic parametric fits (lognormal, weibull, gamma)
 # candidate with the lowest BIC is selected
 
-data.stan$tL <- data.stan$symptom.onset.num - data.stan$exposure.upper.num
-data.stan$tR <- data.stan$symptom.onset.num - data.stan$exposure.lower.num
+data.stan$tL <- data.stan$rash.onset.num - data.stan$exposure.upper.num
+data.stan$tR <- data.stan$rash.onset.num - data.stan$exposure.lower.num
+# data.stan$tL <- data.stan$symptom.onset.num - data.stan$exposure.upper.num
+# data.stan$tR <- data.stan$symptom.onset.num - data.stan$exposure.lower.num
 
 dataIncub <- data.frame(tL = data.stan$tL, tR = data.stan$tR)
 head(dataIncub)
