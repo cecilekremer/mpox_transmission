@@ -3,7 +3,7 @@
 
 * ~Check data on previous vaccination --> can we use it in estimation of incubation period?~
 
-* Check symptom onset dates for very negative serial intervals --> mistakes in data?
+* Check symptom onset dates for very negative serial intervals --> mistakes in data? max. 21 days between questionnaire and symptom onset
 
 * ~***Incubation period***: vary the lower bound of exposure window to see the impact on estimates~
 
@@ -27,7 +27,7 @@
 
 * ***Serial interval***: if only one contact is reported, how likely is it that transmission occurred? (see AJE paper)
 
-* Estimate serial interval / incubation period using onset of rash instead of general symptom onset --> check how much data is available
+* Estimate ~serial interval /~ incubation period using onset of rash instead of general symptom onset 
 
 * PCR-Ct values available to estimate infection time? (depending on sample type)
  
