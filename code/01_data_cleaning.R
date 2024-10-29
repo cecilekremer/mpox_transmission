@@ -394,5 +394,15 @@ table(data$contact1_rel, data$transm_repeatedcontact)
 
 save(data, file = 'data/clean_data.RData')
 
+##-----------------------------------------------------------------------------
+## Longitudinal data
 
+load('data/clean_data.RData')
+names(data); dim(data)
+
+## PCR / Ct values
+
+
+## Follow-up day 29/59
+table(data$patien_lesicuta, data$visit) # lesions still present? 1 = yes
 

@@ -360,6 +360,13 @@ plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPale
      )
 dev.off()
 
+## Transmission pair characteristics
+edgedat <- as.data.frame(edge.mat)
+vertexdat <- as.data.frame(vertex.mat)
+inf.ids <- unique(edgedat$Infector); length(inf.ids)
+table(vertexdat$age[vertexdat$case %in% inf.ids])
+table(vertexdat$occupation[vertexdat$case %in% inf.ids])
+table(vertexdat$occupation[vertexdat$case %in% inf.ids], vertexdat$age[vertexdat$case %in% inf.ids])
 
 ##------------------------------------------------------------
 ## Plot network
