@@ -1,23 +1,7 @@
 
 # TO DO
 
-* ~Check data on previous vaccination --> can we use it in estimation of incubation period?~
-
-* ~***Incubation period***: vary the lower bound of exposure window to see the impact on estimates~
-
-* ~***Incubation period***: using EpiLPS package~
-
-* ~***Most likely network***: indicate sex workers - transmission matrix by age (assortativity?)~
-
-* ~***Serial interval*** MCMC: sensitivity analysis with constraint [-10; 40] days~
-
-* ~***Serial interval*** MCMC: sensitivity analysis where 'dont' remember' = sexual contact~ -> not occurring in pairs data
-
 * ***Serial interval*** MCMC: sensitivity analysis -> ~if transmission hypothesis is sexual, only include the known sexual contacts (not other contacts)~ OR assign higher probability of being the infector?
-
-* ~***Serial interval*** MCMC: stratified by age group of source case~
-
-* ~***Serial interval*** MCMC: stratified by household vs non-household~
 
 * ***Serial interval***: regression model based on observed serial intervals (only one contact, N = 76) --> factors based on characteristics of source case (age, gender, transmission route, HH status, sex worker, ...); Bayesian regression?
 
