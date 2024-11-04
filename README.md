@@ -11,7 +11,7 @@
 
 * ***Serial interval***: co-primary cases -> mixture model? (Miura et al?)
 
-* Presymptomatic transmission: does it more often / exclusively occur via sexual transmission? -> 4 out of 6 pairs w/ presympt transmission report sexual contact
+* ~Presymptomatic transmission: does it more often / exclusively occur via sexual transmission? -> 4 out of 6 pairs w/ presympt transmission report sexual contact~
 
 * ~Estimate serial interval / incubation period using onset of rash instead of general symptom onset~
 
