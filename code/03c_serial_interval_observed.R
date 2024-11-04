@@ -85,6 +85,133 @@ table(data.si$contact1_sexual[data.si$serial.interval < 0])
 sum(data.si$serial.interval[is.na(data.si$contact1_sexual)] < 0)
 sum(data.si$serial.interval[!is.na(data.si$contact1_sexual)] < 0)
 
+##-------------------------------------------------------------------------------------------
+##
+## Regression analysis
+##
+##-------------------------------------------------------------------------------------------
+
+summary(data.si$agenum)
+table(data.si$gender)
+table(data.si$agecat)
+table(data.si$occupation_prim)
+for(i in 1:dim(data.si)[1]){
+  data.si$agenum.i[i] <- data$agenum[data$ID == data.si$contacts[i]]
+  data.si$agecat.i[i] <- data$agecat[data$ID == data.si$contacts[i]]
+  data.si$gender.i[i] <- data$gender[data$ID == data.si$contacts[i]]
+  data.si$occupation_prim.i[i] <- data$occupation_prim[data$ID == data.si$contacts[i]]
+}
+summary(data.si$agenum.i)
+data.si$agediff <- data.si$agenum - data.si$agenum.i
+summary(data.si$agediff) # index case on average 2.9 years younger than secondary case
+table(data.si$agecat.i)
+table(data.si$gender.i)
+table(data.si$occupation_prim.i)
+
+data.si$sexworker <- ifelse(data.si$occupation_prim == 3, 1, 0)
+data.si$sexworker.i <- ifelse(data.si$occupation_prim.i == 3, 1, 0)
+table(data.si$sexworker); table(data.si$sexworker.i)
+data.si$mineworker <- ifelse(data.si$occupation_prim == 4, 1, 0)
+data.si$mineworker.i <- ifelse(data.si$occupation_prim.i == 4, 1, 0)
+table(data.si$mineworker); table(data.si$mineworker.i)
+
+data.si$genital.lesion <- ifelse(data.si$n.lesion.genital > 0, 1, 0)
+data.si$anal.lesion <- ifelse(data.si$n.lesion.anal > 0, 1, 0)
+table(data.si$genital.lesion, data.si$anal.lesion)
+
+data.si$HHmember <- ifelse(data.si$contact1_rel == 1, 1, 0)
+table(data.si$HHmember)
+
+### Scenario 1
+data.sens1 <- data.si
+data.sens1$contact1_sexual <- ifelse(is.na(data.sens1$contact1_sexual) | data.sens1$contact1_sexual == 1, 1, 2)
+table(data.sens1$contact1_sexual)
+
+## Univariate regression
+summary(lm(serial.interval ~ agenum, data = data.sens1))
+summary(lm(serial.interval ~ agenum.i, data = data.sens1))
+summary(lm(serial.interval ~ sexworker, data = data.sens1))
+summary(lm(serial.interval ~ sexworker.i, data = data.sens1))
+summary(lm(serial.interval ~ mineworker, data = data.sens1))
+summary(lm(serial.interval ~ mineworker.i, data = data.sens1))
+summary(lm(serial.interval ~ contact1_sexual, data = data.sens1))
+summary(lm(serial.interval ~ genital.lesion, data = data.sens1))
+summary(lm(serial.interval ~ anal.lesion, data = data.sens1))
+summary(lm(serial.interval ~ HHmember, data = data.sens1))
+
+
+## Multiple regression
+mod <- lm(serial.interval ~ 
+            sexworker.i +
+            mineworker.i + 
+            contact1_sexual
+          , data = data.sens1)
+summary(mod)
+car::vif(mod)
+
+### Scenario 2
+data.sens2 <- data.si
+data.sens2$contact1_sexual <- ifelse(is.na(data.sens2$contact1_sexual) | data.sens2$contact1_sexual == 2, 2, 1)
+table(data.sens2$contact1_sexual)
+
+## Univariate regression
+summary(lm(serial.interval ~ agenum, data = data.sens2))
+summary(lm(serial.interval ~ agenum.i, data = data.sens2))
+summary(lm(serial.interval ~ sexworker, data = data.sens2))
+summary(lm(serial.interval ~ sexworker.i, data = data.sens2))
+summary(lm(serial.interval ~ mineworker, data = data.sens2))
+summary(lm(serial.interval ~ mineworker.i, data = data.sens2))
+summary(lm(serial.interval ~ contact1_sexual, data = data.sens2))
+summary(lm(serial.interval ~ genital.lesion, data = data.sens2))
+summary(lm(serial.interval ~ anal.lesion, data = data.sens2))
+summary(lm(serial.interval ~ HHmember, data = data.sens2))
+
+## Multiple regression
+mod <- lm(serial.interval ~ 
+            sexworker.i +
+            mineworker.i +
+            contact1_sexual
+            , data = data.sens2)
+summary(mod)
+car::vif(mod)
+
+### Scenario 3
+data.sens3 <- data.si
+for(i in 1:dim(data.sens3)[1]){
+  if(is.na(data.sens3$contact1_sexual[i])){
+    if(is.na(data.sens3$n.lesion.anal[i]) || is.na(data.sens3$n.lesion.genital[i])){
+      data.sens3$contact1_sexual[i] <- 2
+    }else{ 
+      if(data.sens3$n.lesion.anal[i] > 0 | data.sens3$n.lesion.genital[i] > 0){
+        data.sens3$contact1_sexual[i] <- 1
+      }else{
+        data.sens3$contact1_sexual[i] <- 2
+      }
+    }
+  }
+}
+table(data.sens3$contact1_sexual)
+
+## Univariate regression
+summary(lm(serial.interval ~ agenum, data = data.sens3))
+summary(lm(serial.interval ~ agenum.i, data = data.sens3))
+summary(lm(serial.interval ~ sexworker, data = data.sens3))
+summary(lm(serial.interval ~ sexworker.i, data = data.sens3))
+summary(lm(serial.interval ~ mineworker, data = data.sens3))
+summary(lm(serial.interval ~ mineworker.i, data = data.sens3))
+summary(lm(serial.interval ~ contact1_sexual, data = data.sens3))
+summary(lm(serial.interval ~ genital.lesion, data = data.sens3))
+summary(lm(serial.interval ~ anal.lesion, data = data.sens3))
+summary(lm(serial.interval ~ HHmember, data = data.sens3))
+
+## Multiple regression
+mod <- lm(serial.interval ~ 
+            sexworker.i +
+            mineworker.i +
+            contact1_sexual
+            , data = data.sens3)
+summary(mod)
+car::vif(mod)
 
 ##-------------------------------------------------------------------------------------------
 ##

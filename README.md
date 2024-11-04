@@ -9,7 +9,7 @@
 
 * ***Serial interval***: use date of last contact as infection time (i.e. generation interval) --> check for how many pairs this is available for both cases
 
-* ***Serial interval***: co-primary cases -> mixture model? (Miura et al? Vink et al 2014: https://academic.oup.com/aje/article/180/9/865/2739204#86234039)
+* ***Serial interval***: co-primary cases -> mixture model? (Miura et al?)
 
 * Presymptomatic transmission: does it more often / exclusively occur via sexual transmission? -> 4 out of 6 pairs w/ presympt transmission report sexual contact
 
