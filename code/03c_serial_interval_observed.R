@@ -40,6 +40,22 @@ dim(data.si)
 table(data.si$contact1_sexual)
 
 hist(data.si$days_since_last_contact1)
+length(which(data.si$contacts %in% data.si$ID))
+data.si$infection.time <- data.si$date - data.si$days_since_last_contact1
+data.si$infection.time.i <- NA
+for(i in 1:dim(data.si)[1]){
+  if(data.si$contacts[i] %in% data.si$ID){
+    data.si$infection.time.i[i] <- data.si$date[data.si$ID == data.si$contacts[i]] - data.si$days_since_last_contact1[data.si$ID == data.si$contacts[i]]
+  }
+}
+summary(as.Date(data.si$infection.time.i)); sum(!is.na(data.si$infection.time.i))
+summary(data.si$infection.time)
+data.si$infection.time.i <- as.Date(data.si$infection.time.i)
+data.si$gen.interval <- as.numeric(data.si$infection.time - data.si$infection.time.i)
+summary(data.si$gen.interval); hist(data.si$gen.interval)
+sum(data.si$gen.interval < 0, na.rm = T)
+ids <- c(data.si$ID[!is.na(data.si$gen.interval)], data.si$contacts[!is.na(data.si$gen.interval)])
+View(data.si[data.si$ID %in% ids, c(1,2,3,42,100,127,131,129,130)])
 
 # Check whether contact != ID
 sum(data.si$contacts == data.si$ID)
@@ -49,6 +65,10 @@ data.si <- data.si[data.si$contacts != data.si$ID, ]
 ddd <- data.si[data.si$contacts %in% data.si$ID, ]
 ids <- c(ddd$contacts, ddd$ID)
 View(data.si[data.si$ID %in% ids,][,c("ID","contacts")])
+
+
+summary(data.si$gen.interval[data.si$gen.interval > 0])
+
 
 ##-------------------------------------------------------------------------------------------
 ## Characteristics of the pairs with sexual transmission
@@ -171,7 +191,7 @@ mod <- lm(serial.interval ~
             sexworker.i +
             mineworker.i +
             contact1_sexual
-            , data = data.sens2)
+          , data = data.sens2)
 summary(mod)
 car::vif(mod)
 
@@ -209,7 +229,7 @@ mod <- lm(serial.interval ~
             sexworker.i +
             mineworker.i +
             contact1_sexual
-            , data = data.sens3)
+          , data = data.sens3)
 summary(mod)
 car::vif(mod)
 

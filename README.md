@@ -7,7 +7,7 @@
 
 * ***Serial interval***: if only one contact is reported, how likely is it that transmission occurred? (see AJE paper)
 
-* ***Serial interval***: use date of last contact as infection time (i.e. generation interval) --> check for how many pairs this is available for both cases
+* ***Serial interval***: use date of last contact as infection time (i.e. generation interval) --> available for 75 secondary cases, 13 index cases
 
 * ***Serial interval***: co-primary cases -> mixture model? (Miura et al?)
 
