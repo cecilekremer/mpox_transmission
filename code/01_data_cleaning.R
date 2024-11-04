@@ -406,3 +406,22 @@ names(data); dim(data)
 ## Follow-up day 29/59
 table(data$patien_lesicuta, data$visit) # lesions still present? 1 = yes
 
+
+## Pregnancy (N = 20, 10% of women) --> vertical transmission?
+table(data$pti_encient3m) # pregnant: 1 = yes, 2 = no, 3 = don't know
+table(data$rslr_test) # if not pregnant or unkown, pregnancy test is done (1 = pos, 2 = neg, 3 = not done)
+
+table(data$encetactuel) # is the woman really pregnant -> N = 20
+table(data$pt_etaienct) # if not really pregnant, have they been pregnant in the 3 weeks before mpox?
+
+summary(as.Date(data$datenaissprevue))
+sum(as.Date(data$datenaissprevue) < '2024-10-01', na.rm = T)
+summary(as.Date(data$dtissu))
+sum(as.Date(data$dtissu) < '2024-10-01', na.rm = T)
+
+table(data$issu_gross) # pregnancy outcome: 1 = >=37w, 2 = prem (<37w), 3 = stillbirth (>20w), 4 = miscarriage (<20w), 5 = abortion
+table(data$issu_gross[as.Date(data$dtissu) < '2024-10-01'])
+table(data$vnbmenfconu) # number of fetuses
+table(data$signnass) # signs of mpox infection at birth: 1 = yes, 2 = no, 3 = unkown
+table(data$descrextfoet)
+

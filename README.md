@@ -21,7 +21,7 @@
 
 * Duration of hospital stay -> severity of symptoms? type of symptoms?
 
-* Pregnancy outcomes -> is there enough data to say something about vertical transmission?
+* Pregnancy outcomes -> is there enough data to say something about vertical transmission? 10% of women are pregnant (N = 20); but only 2 have delivered already (1/10/2024); there is a question about presence of signs of mpox infection (skin lesions)
 
 * mpox in household -> within which timeframe? (ask in meeting 5/11)
 
