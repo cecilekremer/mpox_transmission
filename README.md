@@ -23,9 +23,11 @@
 
 * Pregnancy outcomes -> is there enough data to say something about vertical transmission? 10% of women are pregnant (N = 20); but only 2 have delivered already (1/10/2024); there is a question about presence of signs of mpox infection (skin lesions)
 
-* mpox in household -> within which timeframe? (ask in meeting 5/11)
+* mpox in household -> within which timeframe? (ask ITM)
 
-* Which data are available for PCR-negative cases?
+* Which data are available for PCR-negative cases? Same baseline data as for positive cases
+
+* Cases report how many mpox cases they had contact with -> using the number of those that are not included in the study, can we get a rough estimate of 'undetected' cases? What info is available for those contacts? Maybe some additional info can be collected (age, type, ...)
  
 
 # Open questions
