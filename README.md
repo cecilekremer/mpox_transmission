@@ -15,11 +15,11 @@
 
 * ~Estimate serial interval / incubation period using onset of rash instead of general symptom onset~
 
-* PCR-Ct values available to estimate infection time? (depending on sample type) --> better estimates of incubation period
+* PCR-Ct values available to estimate infection time? (depending on sample type) --> better estimates of incubation period.. **Available in December**
 
 * Overview of symptoms (table with most reported symptoms) + evolution over the course of infection?
 
-* Duration of hospital stay -> severity of symptoms? type of symptoms?
+* Duration of hospital stay (0 - 34 days, median 6 days, IQR 4 - 9 days) -> severity of symptoms? type of symptoms?
 
 * Pregnancy outcomes -> is there enough data to say something about vertical transmission? 10% of women are pregnant (N = 20); but only 2 have delivered already (1/10/2024); there is a question about presence of signs of mpox infection (skin lesions)
 
