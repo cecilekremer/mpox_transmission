@@ -3,6 +3,14 @@ load('data/clean_data.RData')
 
 dim(data); names(data)
 
+## Hospital outcome
+data$hospital_outcome <- data$isd_part # 1 = exit, 2 = consent withdrawn, 3 = deceased, 4 = LTFU
+data$hospital_discharge <- as.Date(data$dt_dissue)
+data$lesions_resolved <- data$si_pde___1
+data$symptoms_resolved <- data$si_pde___2
+data$home_care <- data$si_pde___3
+data$other_hosp <- data$si_pde___4
+
 ##--------------------------------------------------
 ## Baseline visit: patient characteristics
 
@@ -92,10 +100,33 @@ table(data_base$vagina_lesion)
 table(data_base$transm_sexual, data_base$penis_lesion)
 table(data_base$transm_sexual, data_base$vagina_lesion)
 
+## Symptoms: 1 = yes, 2 = no, 3 = don't know/no response
+data_base$fatigue <- data_base$faigue # fatigue
+# table(data_base$malaise) # malaise
+# table(data_base$myalgie)
+data_base$malaise <- data_base$malaise
+data_base$myalgie <- data_base$myalgie
+data_base$lesion_pain <- data_base$dassasio # pain associated to lesion
+data_base$itching <- data_base$pruritcorps # itching on the body
+data_base$cough <- data_base$toux 
+data_base$dyspnea <- data_base$dyspn_e
+data_base$anorexia <- data_base$anorexi
+data_base$sore_throat <- data_base$malgorge
+data_base$abdominal_pain <- data_base$dabdomie
+data_base$vomiting <- data_base$vomissement
+data_base$diarrhea <- data_base$diarrh_e
+data_base$headache <- data_base$matete
+data_base$confusion <- data_base$trblla_cns
+data_base$seizures <- data_base$crise_clsives
+data_base$eyepain <- data_base$dlr_oculaire
+data_base$vision <- data_base$prt_vision
+data_base$hemorrhage <- data_base$sagne
+data_base$rectal_pain <- data_base$dlr_rectale
+data_base$pain_urinating <- data_base$doulurin
+data_base$genital_pain <- data_base$doulvagpeni
+data_base$other_symptoms <- data_base$autre
 
-##----------------------------------------------------------------------------------------------
-## Longitudinal data (hospital follow-up)
-
+## Follow-up ID
 sum(data_base$codeadulte != ""); sum(data_base$codeenfant != "") # follow-up IDs
 data_base$followupID <- ifelse(data_base$agecat == 1, data_base$codeadulte, data_base$codeenfant)
 sum(data_base$followupID != '')
@@ -110,16 +141,185 @@ data_base$id_adult
 data_base$id_child 
 data_base$followupID
 
+##----------------------------------------------------------------------------------------------
+## Longitudinal data (hospital follow-up)
+summary(as.Date(data$dtvisit))
+table(data$visit[data$dtvisit == ''])
+data$dtvisit <- as.Date(data$dtvisit)
+summary(data$dtvisit)
 
-## All data
-load('data/clean_data.RData')
-dim(data); names(data)
-data$followupID <- ifelse(data$agecat == 1, data$codeadulte, data$codeenfant)
-sum(data$followupID != '', na.rm = T)
+data_hospital <- data[!is.na(data$dtvisit), ]
+data_hospital <- data_hospital[data_hospital$suivi_fait == 1,]
+data_hospital <- data_hospital[!is.na(data_hospital$isac), ]
+dim(data_hospital); length(unique(data_hospital$isac))
 
-table(data$suivi_fait)
-length(unique(data$isac[data$suivi_fait==1])) # ID's of patients that had follow-up during hospitalisation
+# Add visit number
+library(dplyr)
+data_hospital <- data_hospital %>%
+  dplyr::distinct(isac, dtvisit) %>%
+  group_by(isac) %>%
+  arrange(dtvisit, .by_group = TRUE) %>%
+  dplyr::mutate(n_visit = row_number()) %>%
+  right_join(data_hospital, by = c('isac', 'dtvisit'))
+dim(data_hospital)
+table(data_hospital$n_visit)
 
-## Hospital follow-up 
-summary(data$dtvisit); table(data$visit); table(data$suivi_fait) 
+data_hospital$fatigue <- data_hospital$fatigue
+data_hospital$malaise <- data_hospital$malaise_2b170b
+data_hospital$myalgie <- data_hospital$myalgie_art
+data_hospital$lesion_pain <- data_hospital$douleur_as # pain associated to lesion
+data_hospital$itching <- data_hospital$prurit_a # itching on the body
+data_hospital$cough <- data_hospital$toux_5c4877 
+data_hospital$dyspnea <- data_hospital$dyspn_e_2dfa93
+data_hospital$anorexia <- data_hospital$anorexie
+data_hospital$sore_throat <- data_hospital$mal_d
+data_hospital$abdominal_pain <- data_hospital$douleur_a
+data_hospital$vomiting <- data_hospital$vomisse
+data_hospital$diarrhea <- data_hospital$diarrh_e_19dff4
+data_hospital$headache <- data_hospital$maux_dt
+data_hospital$confusion <- data_hospital$troubles_d
+data_hospital$seizures <- data_hospital$crises_con
+data_hospital$eyepain <- data_hospital$douleur_oc
+data_hospital$vision <- data_hospital$perte_d
+data_hospital$hemorrhage <- data_hospital$saignement_h
+data_hospital$rectal_pain <- data_hospital$douleur_rc
+data_hospital$pain_urinating <- data_hospital$douleur_uri
+data_hospital$genital_pain <- data_hospital$douleur_gnit
+data_hospital$other_symptoms <- data_hospital$autre_fc4d0d
 
+
+##---------------------------------------------------------------  
+## Follow-up visit  
+
+data_fu <- data[data$visit == 'visite_de_suivi', ]
+dim(data_fu)
+data_fu$dt_visite <- as.Date(data_fu$dt_visite)
+data_fu <- data_fu[!is.na(data_fu$dt_visite), ]
+table(data_fu$jr_delavisite) # 1 = day 29, 2 = day 59
+
+table(data_fu$nbr_prsatteintmpox) # number of HH members that have acquired mpox
+
+data_fu$fatigue <- data_fu$fatigue1
+data_fu$malaise <- data_fu$malaise1
+data_fu$myalgie <- data_fu$myalgie_arthralgie
+data_fu$lesion_pain <- data_fu$dlr_associ1 # pain associated to lesion
+data_fu$itching <- data_fu$prurites1 # itching on the body
+data_fu$cough <- data_fu$toux1 
+data_fu$dyspnea <- data_fu$dyspn_e1
+data_fu$anorexia <- data_fu$anorexie1
+data_fu$sore_throat <- data_fu$mal_dgorge1
+data_fu$abdominal_pain <- data_fu$douleur_abdom1
+data_fu$vomiting <- data_fu$vomissements1
+data_fu$diarrhea <- data_fu$diarrh_e1
+data_fu$headache <- data_fu$maux_tte1
+data_fu$confusion <- data_fu$trbls_consc
+
+data_fu$depression <- data_fu$d_pression
+data_fu$anguish <- data_fu$anguish
+
+data_fu$seizures <- data_fu$crises_convulsives
+data_fu$eyepain <- data_fu$douleur_oculaire
+data_fu$vision <- data_fu$perte_vision1
+
+data_fu$decreased_vision <- data_fu$dimi_acuitvisuell
+data_fu$itchy_eye <- data_fu$d_mangeaison
+
+data_fu$photophobia <- data_fu$photophobie1
+
+data_fu$hemorrhage <- data_fu$saignement1
+data_fu$rectal_pain <- data_fu$douleur_rectale1
+data_fu$pain_urinating <- data_fu$douleur_urinant
+data_fu$genital_pain <- data_fu$douleur_gnitale
+data_fu$painful_sex <- data_fu$douleur_contsex
+data_fu$vaginal_discharge <- data_fu$pertes_vaginales
+data_fu$vaginal_dryness <- data_fu$s_cheresse_vaginale
+
+data_fu$other_symptoms <- data_fu$autre1
+
+data_fu$lesions_present <- data_fu$patien_lesicuta
+
+
+data_fu$HH_mpox <- data_fu$nbr_prsatteintmpox
+data_fu$travel <- data_fu$partic_voyage
+data_fu$intercourse <- data_fu$raport_sexdps # had intercourse since last visit (hospital discharge or day 29) 1 = yes, 2 = no, 3 = no response
+data_fu$num_partners <- data_fu$avc_cbipartic
+data_fu$intercourse_SW <- data_fu$rappsex_ps
+data_fu$condomuse <- data_fu$utilis_presevatif
+data_fu$oral_lesion <- data_fu$orale3
+data_fu$tonsil_lesion <- data_fu$tonsilles
+data_fu$penis_lesion <- data_fu$gland_pnis
+data_fu$vagina_lesion <- data_fu$vulvo_vaginale
+
+
+##---------------------------------------------------------------
+## Combine symptom data
+
+names(data_base)
+data_base <- data_base[,c(1,7,21:26,234,235,445,878,879:1013)]
+data_base <- data_base[,c(1,2,9:147)]
+data_base <- data_base[,c(1,2,6, 7:120, 122, 3:5, 123:141)]
+dim(data_base)
+names(data_base)[2:3] <- c('date','visit')
+data_base$date <- as.Date(data_base$date)
+
+names(data_hospital)
+data_hospital <- data_hospital[,c(1:3,236,237,446,879:1012)]
+data_hospital$visit <- paste0('hosp_', data_hospital$n_visit)
+data_hospital <- data_hospital[,c(1,2,7,8:122,4:6,123:140)]
+data_hospital$followupID <- NA
+dim(data_hospital)
+names(data_hospital)[2:3] <- c('date','visit')
+
+names(data_fu)
+data_fu <- data_fu[,c(1,724,725,234,235,445,878:1019)]
+data_fu$visit <- data_fu$jr_delavisite
+data_fu <- data_fu[,c(1,2,7,8:132,134,135,136,140,141,142,143,147,4:6)]
+data_fu$followupID <- NA
+dim(data_fu)
+data_fu <- data_fu[,c(1:118,137:139,119:136,140)]
+names(data_fu)[2:3] <- c('date','visit')
+data_fu$visit <- ifelse(data_fu$visit == 1, 'day29', 'day59')
+
+names(data_fu) == names(data_base)
+names(data_base) == names(data_hospital)
+
+save(data_hospital, file = 'data/hospital_data.RData')
+save(data_base, file = 'data/baseline_data.RData')
+save(data_fu, file = 'data/followup_data.RData')
+
+data_symptoms <- rbind(data_hospital, data_base, data_fu)
+dim(data_symptoms); length(unique(data_symptoms$isac))
+table(data_symptoms$visit)
+
+save(data_symptoms, file = 'data/symptom_data.RData')
+
+##----------------------------------------------------------------------------------------------
+## Duration of hospitalization
+
+load('data/symptom_data.RData')
+
+names(data_symptoms[grepl('hosp', data_symptoms$visit), ])
+data_symptoms$hospital_duration <- as.numeric(data_symptoms$hospital_discharge - data_symptoms$date)
+summary(data_symptoms$hospital_duration); sum(!is.na(data_symptoms$hospital_duration))
+
+##-----------------------------------------------------------------------------------------------
+## Duration of symptoms
+
+dat.fatigue <- as.data.frame(table(data_symptoms$visit, data_symptoms$fatigue))
+dat.fatigue <- dat.fatigue[dat.fatigue$Var2 == 1, ]
+dat.fatigue$Var1 <- factor(as.character(dat.fatigue$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+dat.fatigue <- dat.fatigue[order(dat.fatigue$Var1), ]
+dat.fatigue$Freq <- dat.fatigue$Freq / 415
+dat.fatigue$visit <- 1:dim(dat.fatigue)[1]
+plot(dat.fatigue$visit, dat.fatigue$Freq, type = 'b', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n')
+axis(side = 1, las = 2, labels = dat.fatigue$Var1, at = seq(1,dim(dat.fatigue)[1]))
+
+dat.headache <- as.data.frame(table(data_symptoms$visit, data_symptoms$headache))
+dat.headache <- dat.headache[dat.headache$Var2 == 1, ]
+dat.headache$Var1 <- factor(as.character(dat.headache$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+dat.headache <- dat.headache[order(dat.headache$Var1), ]
+dat.headache$Freq <- dat.headache$Freq / 415
+dat.headache$visit <- 1:dim(dat.headache)[1]
+lines(dat.headache$visit, dat.headache$Freq, col = 2, type = 'b')
+
+legend('topright', c('fatigue','headache'), col = c(1,2), lty = rep(1, 2))

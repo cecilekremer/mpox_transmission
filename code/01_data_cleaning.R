@@ -152,6 +152,8 @@ sum(!is.na(as.Date(data$dat_invesc)))
 
 ## IDs of confirmed cases at baseline visit
 ids.confirmed <- data$isac[data$rsltlc == 1 & data$redcap_repeat_instrument == '']
+ids.negative <- data$isac[data$rsltlc == 2 & data$redcap_repeat_instrument == '']
+data.pcrNeg <- data[data$isac %in% ids.negative, ]
 data <- data[data$isac %in% ids.confirmed, ]
 dim(data)
 
@@ -393,6 +395,10 @@ table(data$contact1_rel, data$transm_repeatedcontact)
 ## Save clean dataset
 
 save(data, file = 'data/clean_data.RData')
+save(data.pcrNeg, file = 'data/data_negativePCR.RData')
+
+table(data.pcrNeg$sexe)
+table(data.pcrNeg$lesion_cuta)
 
 ##-----------------------------------------------------------------------------
 ## Longitudinal data
