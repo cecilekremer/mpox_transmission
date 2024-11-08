@@ -7,6 +7,22 @@ load('data/clean_data.RData')
 data.contact <- data[data$visit == 'baseline', ]
 data.contact$date <- as.Date(data.contact$dtenqt) # inclusion date
 
+## Number of mpox cases contacted
+table(data.contact$contact_mpox)
+sum(data.contact$num_contact_mpox, na.rm = T)
+
+table(data.contact$contact1_included)
+sum(data.contact$contact1_included!=1, na.rm = T)/sum(table(data.contact$contact1_included))
+sum(data.contact$contact2_included!=1, na.rm = T)/sum(table(data.contact$contact2_included))
+sum(data.contact$contact3_included!=1, na.rm = T)/sum(table(data.contact$contact3_included))
+
+num.contacts <- sum(data.contact$num_contact_mpox, na.rm = T)
+num.contacts.included <- sum(data.contact$contact1_included == 1, na.rm = T) + sum(data.contact$contact2_included == 1, na.rm = T) + sum(data.contact$contact3_included == 1, na.rm = T)
+(num.contacts - num.contacts.included)/num.contacts
+
+## Info available for contacts not included?
+table(data.contact$contact1_rel[data.contact$contact1_included != 1])
+
 ##------------------------------------------------------
 ## Contacts that are included in the study
 

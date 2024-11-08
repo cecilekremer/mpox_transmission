@@ -305,21 +305,135 @@ summary(data_symptoms$hospital_duration); sum(!is.na(data_symptoms$hospital_dura
 ##-----------------------------------------------------------------------------------------------
 ## Duration of symptoms
 
-dat.fatigue <- as.data.frame(table(data_symptoms$visit, data_symptoms$fatigue))
-dat.fatigue <- dat.fatigue[dat.fatigue$Var2 == 1, ]
-dat.fatigue$Var1 <- factor(as.character(dat.fatigue$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
-dat.fatigue <- dat.fatigue[order(dat.fatigue$Var1), ]
-dat.fatigue$Freq <- dat.fatigue$Freq / 415
-dat.fatigue$visit <- 1:dim(dat.fatigue)[1]
-plot(dat.fatigue$visit, dat.fatigue$Freq, type = 'b', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n')
-axis(side = 1, las = 2, labels = dat.fatigue$Var1, at = seq(1,dim(dat.fatigue)[1]))
+symptom.dat <- data_symptoms[,c(1,2,3,99,115,118:139)]
+symptom.dat <- data.frame(symptom.dat)
+prop.included <- as.data.frame(table(symptom.dat$visit))
+prop.included$Var1 <- factor(as.character(prop.included$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+prop.included <- prop.included[order(prop.included$Var1), ]
+prop.included$Prop <- prop.included$Freq / 415
+symp <- c()
+cols <- c(
+  "dodgerblue2", "#E31A1C", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "black", "gold1",
+  "skyblue2", 
+  "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", 
+  "khaki2",
+  "maroon", 
+  "orchid1", 
+  "deeppink1", 
+  "blue1", "steelblue4",
+  # "darkturquoise", 
+  # "green1", 
+  # "yellow4", "yellow3",
+  # "darkorange4", 
+  "brown"
+)
+c <- 1
+symp.evol <- matrix(NA, nrow = length(unique(symptom.dat$visit)), ncol = length(names(symptom.dat)[7:26]))
+jpeg('results/symptoms.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+for(s in 7:26){
+  dat <- as.data.frame(table(symptom.dat[,3], symptom.dat[,s]))
+  dat <- dat[dat$Var2 == 1, ]
+  dat$Var1 <- factor(as.character(dat$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+  dat <- dat[order(dat$Var1), ]
+  dat$Prop <- dat$Freq / prop.included$Freq
+  dat$Freq <- dat$Freq / 415
+  dat$visit <- 1:dim(dat)[1]
+  symp.evol[,c] <- dat$Prop
+  symp <- c(symp, names(symptom.dat)[s])
+  if(s == 7){
+    plot(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1))
+  }else{
+    lines(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1), col = cols[c])
+  }
+  c <- c + 1
+}
+axis(side = 1, las = 2, labels = dat$Var1, at = seq(1,dim(dat)[1]))
+lines(c(1:dim(prop.included)[1]), prop.included$Prop, lty = 2, col = 'darkgrey', lwd = 2)
+legend('topright', c(symp, 'prop of cases included'), col = c(cols, 'darkgrey'), lty = c(rep(1, 20), 2), lwd = c(rep(1, 20), 2))
+dev.off()
 
-dat.headache <- as.data.frame(table(data_symptoms$visit, data_symptoms$headache))
-dat.headache <- dat.headache[dat.headache$Var2 == 1, ]
-dat.headache$Var1 <- factor(as.character(dat.headache$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
-dat.headache <- dat.headache[order(dat.headache$Var1), ]
-dat.headache$Freq <- dat.headache$Freq / 415
-dat.headache$visit <- 1:dim(dat.headache)[1]
-lines(dat.headache$visit, dat.headache$Freq, col = 2, type = 'b')
+# Proportion of patients in hospital on that visit that report a certain symptom
+colnames(symp.evol) <- names(symptom.dat)[7:26]
+rownames(symp.evol) <- dat$Var1
+brk <- 50
+library(plot.matrix)
 
-legend('topright', c('fatigue','headache'), col = c(1,2), lty = rep(1, 2))
+jpeg('results/symptom_evolution.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+par(mar=c(7.1, 5.1, 4.1, 4.1))
+plot(symp.evol, xlab = '', ylab = '', main = '',
+     axis.col = list(side = 1, las = 2),
+     axis.row = list(side = 2, las = 1),
+     breaks = brk,
+     col = rev(heat.colors(brk)),
+     key = list(side = 3, cex.axis = 0.75), fmt.key = '%.2f',
+     polygon.key = NULL, axis.key = NULL, #spacing.key = c(3,2,2),
+     border = NA
+     )
+dev.off()
+
+##-----------------------------------------------------------------------------------------------
+## Duration of lesions
+
+symptom.dat <- data_symptoms[,c(1,2,3,99,115,100:103)]
+symptom.dat <- data.frame(symptom.dat)
+prop.included <- as.data.frame(table(symptom.dat$visit))
+prop.included$Var1 <- factor(as.character(prop.included$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+prop.included <- prop.included[order(prop.included$Var1), ]
+prop.included$Prop <- prop.included$Freq / 415
+symp <- c()
+cols <- c(
+  "dodgerblue2", "#E31A1C", 
+  "green4",
+  "#FF7F00" 
+)
+c <- 1
+symp.evol <- matrix(NA, nrow = length(unique(symptom.dat$visit)), ncol = length(names(symptom.dat)[6:9]))
+jpeg('results/lesions.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+for(s in 6:9){
+  dat <- as.data.frame(table(symptom.dat[,3], symptom.dat[,s]))
+  dat <- dat[dat$Var2 == 1, ]
+  dat$Var1 <- factor(as.character(dat$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+  dat <- dat[order(dat$Var1), ]
+  dat$Prop <- dat$Freq / prop.included$Freq
+  dat$Freq <- dat$Freq / 415
+  dat$visit <- 1:dim(dat)[1]
+  symp.evol[,c] <- dat$Prop
+  symp <- c(symp, names(symptom.dat)[s])
+  if(s == 6){
+    plot(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1))
+  }else{
+    lines(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1), col = cols[c])
+  }
+  c <- c + 1
+}
+axis(side = 1, las = 2, labels = dat$Var1, at = seq(1,dim(dat)[1]))
+lines(c(1:dim(prop.included)[1]), prop.included$Prop, lty = 2, col = 'darkgrey', lwd = 2)
+legend('topright', c(symp, 'prop of cases included'), col = c(cols, 'darkgrey'), lty = c(rep(1, 4), 2), lwd = c(rep(1, 4), 2))
+dev.off()
+
+# Proportion of patients in hospital on that visit that report a certain symptom
+colnames(symp.evol) <- names(symptom.dat)[6:9]
+rownames(symp.evol) <- dat$Var1
+brk <- 50
+library(plot.matrix)
+
+jpeg('results/lesion_evolution.jpeg', width = 30, height = 20, units = 'cm', res = 300)
+par(mar=c(7.1, 5.1, 4.1, 4.1))
+plot(symp.evol, xlab = '', ylab = '', main = '',
+     axis.col = list(side = 1, las = 2),
+     axis.row = list(side = 2, las = 1),
+     breaks = brk,
+     col = rev(heat.colors(brk)),
+     key = list(side = 3, cex.axis = 0.75), fmt.key = '%.2f',
+     polygon.key = NULL, axis.key = NULL, #spacing.key = c(3,2,2),
+     border = NA
+)
+dev.off()
