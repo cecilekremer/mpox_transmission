@@ -150,21 +150,30 @@ table(data.sens1$contact1_sexual)
 ## Univariate regression
 summary(lm(serial.interval ~ agenum, data = data.sens1))
 summary(lm(serial.interval ~ agenum.i, data = data.sens1))
-summary(lm(serial.interval ~ sexworker, data = data.sens1))
-summary(lm(serial.interval ~ sexworker.i, data = data.sens1))
-summary(lm(serial.interval ~ mineworker, data = data.sens1))
-summary(lm(serial.interval ~ mineworker.i, data = data.sens1))
-summary(lm(serial.interval ~ contact1_sexual, data = data.sens1))
-summary(lm(serial.interval ~ genital.lesion, data = data.sens1))
-summary(lm(serial.interval ~ anal.lesion, data = data.sens1))
-summary(lm(serial.interval ~ HHmember, data = data.sens1))
+summary(lm(serial.interval ~ factor(sexworker), data = data.sens1))
+summary(lm(serial.interval ~ factor(sexworker.i), data = data.sens1))
+summary(lm(serial.interval ~ factor(mineworker), data = data.sens1))
+summary(lm(serial.interval ~ factor(mineworker.i), data = data.sens1))
+summary(lm(serial.interval ~ factor(contact1_sexual), data = data.sens1))
+summary(lm(serial.interval ~ factor(genital.lesion), data = data.sens1))
+summary(lm(serial.interval ~ factor(anal.lesion), data = data.sens1))
+summary(lm(serial.interval ~ factor(HHmember), data = data.sens1))
 
 
 ## Multiple regression
+# mod <- lm(serial.interval ~ 
+#             factor(sexworker.i) +
+#             factor(mineworker.i) + 
+#             factor(contact1_sexual)
+#           , data = data.sens1)
+# summary(mod)
+# car::vif(mod)
 mod <- lm(serial.interval ~ 
-            sexworker.i +
-            mineworker.i + 
-            contact1_sexual
+            factor(sexworker.i) +
+            # factor(mineworker) +
+            factor(mineworker.i) +
+            # factor(sexworker) + 
+            factor(contact1_sexual)
           , data = data.sens1)
 summary(mod)
 car::vif(mod)
