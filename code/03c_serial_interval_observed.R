@@ -1,14 +1,36 @@
+library(dplyr)
+library(tidyr)
 
-load('data/contact_data.RData')
+load('data/contact_data_100325.RData')
 data <- data.contact.clean
 
 ##---------------------------------------------------------------
 ## Individuals reporting only one contact (N = 86)
 
-data.si <- (data[data$contact1_id != '' & data$contact2_id == '' & data$contact3_id == '', ])
-data.si <- data.si[data.si$contacts != '', ]
-all(nchar(data.si$contacts) <= 3 )
+# data.si <- (data[data$contact1_id != '' & data$contact2_id == '' & data$contact3_id == '' & data$contact4_id == '', ])
+# data.si <- data[data$num_contact_mpox == 1, ]
+data.si <- data[data$contacts != '', ]
+excl <- which(grepl(',', data.si$contacts)) # exclude those reporting multiple contacts
+data.si <- data.si[-excl, ]
+# data.si <- data.si[!is.na(data.si$contacts), ]
+all(nchar(data.si$contacts) <= 4 )
 data.si$contacts <- as.numeric(data.si$contacts)
+dim(data.si)
+df <- data.si %>%
+  mutate(across(matches("^contact\\d+_"), as.character))
+df_long <- df %>%
+  pivot_longer(cols = matches("^contact\\d+_"),
+               names_to = c("contact_num", ".value"),
+               names_pattern = "(contact\\d+)_(.*)")
+df_long <- df_long[!is.na(df_long$symptom.onset), ]
+# df_long <- df_long[df_long$num_contact_mpox == 1, ]
+length(unique(df_long$ID))
+df_long <- df_long[df_long$id != '', ]
+table(df_long$contact_num[!is.na(df_long$type)])
+# df_long <- df_long[!is.na(df_long$rel), ]
+length(unique(df_long$ID))
+
+data.si <- df_long
 
 summary(data.si$symptom.onset)
 data.si$symptom.onset.index <- NA
@@ -21,10 +43,11 @@ data.si$symptom.onset.index <- as.Date(data.si$symptom.onset.index)
 
 data.si$serial.interval <- as.numeric(data.si$symptom.onset - data.si$symptom.onset.index)
 
+sum(!is.na(data.si$serial.interval))
 summary(data.si$serial.interval)
-hist(data.si$serial.interval)
-hist(data.si$serial.interval[data.si$contact1_sexual == 1]); summary(data.si$serial.interval[data.si$contact1_sexual == 1])
-hist(data.si$serial.interval[data.si$contact1_sexual == 2]); summary(data.si$serial.interval[data.si$contact1_sexual == 2])
+hist(data.si$serial.interval, breaks = 50)
+# hist(data.si$serial.interval[data.si$contact1_sexual == 1], breaks = 50); summary(data.si$serial.interval[data.si$contact1_sexual == 1])
+# hist(data.si$serial.interval[data.si$contact1_sexual == 2], breaks = 50); summary(data.si$serial.interval[data.si$contact1_sexual == 2])
 
 # data.si$ID[data.si$serial.interval == 70]
 # i <- 477
@@ -34,58 +57,79 @@ hist(data.si$serial.interval[data.si$contact1_sexual == 2]); summary(data.si$ser
 # data$date[data$ID == i] - data$days_since_last_contact1[data$ID == i]
 
 ## Exclude outlier (last contact was 45 days after index symptom onset)
-data.si <- data.si[data.si$serial.interval < 70, ]
+data.si <- data.si[data.si$serial.interval <= 30, ]
+data.si <- data.si[data.si$serial.interval >= -5, ]
 data.si <- data.si[!is.na(data.si$serial.interval), ]
 dim(data.si)
-table(data.si$contact1_sexual)
+table(data.si$sexual)
+summary(data.si$serial.interval)
+sum(data.si$serial.interval < 0)
 
-hist(data.si$days_since_last_contact1)
-length(which(data.si$contacts %in% data.si$ID))
-data.si$infection.time <- data.si$date - data.si$days_since_last_contact1
-data.si$infection.time.i <- NA
-for(i in 1:dim(data.si)[1]){
-  if(data.si$contacts[i] %in% data.si$ID){
-    data.si$infection.time.i[i] <- data.si$date[data.si$ID == data.si$contacts[i]] - data.si$days_since_last_contact1[data.si$ID == data.si$contacts[i]]
-  }
-}
-summary(as.Date(data.si$infection.time.i)); sum(!is.na(data.si$infection.time.i))
-summary(data.si$infection.time)
-data.si$infection.time.i <- as.Date(data.si$infection.time.i)
-data.si$gen.interval <- as.numeric(data.si$infection.time - data.si$infection.time.i)
-summary(data.si$gen.interval); hist(data.si$gen.interval)
-sum(data.si$gen.interval < 0, na.rm = T)
-ids <- c(data.si$ID[!is.na(data.si$gen.interval)], data.si$contacts[!is.na(data.si$gen.interval)])
-View(data.si[data.si$ID %in% ids, c(1,2,3,42,100,127,131,129,130)])
+# hist(data.si$days_since_last_contact1)
+# length(which(data.si$contacts %in% data.si$ID))
+# data.si$infection.time <- data.si$date - data.si$days_since_last_contact1
+# data.si$infection.time.i <- NA
+# for(i in 1:dim(data.si)[1]){
+#   if(data.si$contacts[i] %in% data.si$ID){
+#     data.si$infection.time.i[i] <- data.si$date[data.si$ID == data.si$contacts[i]] - data.si$days_since_last_contact1[data.si$ID == data.si$contacts[i]]
+#   }
+# }
+# summary(as.Date(data.si$infection.time.i)); sum(!is.na(data.si$infection.time.i))
+# summary(data.si$infection.time)
+# data.si$infection.time.i <- as.Date(data.si$infection.time.i)
+# data.si$gen.interval <- as.numeric(data.si$infection.time - data.si$infection.time.i)
+# summary(data.si$gen.interval); hist(data.si$gen.interval)
+# sum(data.si$gen.interval < 0, na.rm = T)
+# ids <- c(data.si$ID[!is.na(data.si$gen.interval)], data.si$contacts[!is.na(data.si$gen.interval)])
+# View(data.si[data.si$ID %in% ids, c(1,2,3,42,100,127,131,129,130)])
 
 # Check whether contact != ID
 sum(data.si$contacts == data.si$ID)
 data.si <- data.si[data.si$contacts != data.si$ID, ]
+dim(data.si)
 
-# Contacts reporting each other?
-ddd <- data.si[data.si$contacts %in% data.si$ID, ]
-ids <- c(ddd$contacts, ddd$ID)
-View(data.si[data.si$ID %in% ids,][,c("ID","contacts")])
+# si.IDs <- data.si$ID
+# save(si.IDs, file = 'IDs_serial_interval.RData')
+
+# # Contacts reporting each other?
+# ddd <- data.si[data.si$contacts %in% data.si$ID, ]
+# ids <- c(ddd$contacts, ddd$ID)
+# View(data.si[data.si$ID %in% ids,][,c("ID","contacts")])
 
 
-summary(data.si$gen.interval[data.si$gen.interval > 0])
+# summary(data.si$gen.interval[data.si$gen.interval > 0])
 
 
 ##-------------------------------------------------------------------------------------------
 ## Characteristics of the pairs with sexual transmission
 
-table(data.si$contact1_sexual, data.si$n.lesion.genital)
-table(data.si$n.lesion.genital[is.na(data.si$contact1_sexual)])
-table(data.si$n.lesion.anal[is.na(data.si$contact1_sexual)])
+summary(data.si$serial.interval)
+dim(data.si)
+sum(data.si$serial.interval < 0)
+
+save(data.si, file = 'data_obs_SI.RData')
+
+table(data.si$sexual, data.si$n.lesion.genital)
+table(data.si$n.lesion.genital[is.na(data.si$sexual)])
+table(data.si$n.lesion.anal[is.na(data.si$sexual)])
+
+data.si$lesion_intimate <- ifelse(data.si$n.lesion.anal>0 | data.si$n.lesion.genital>0, 1, 0)
+table(data.si$lesion_intimate[is.na(data.si$sexual)])
+table(data.si$lesion_intimate[data.si$sexual == 2])
 
 # HH members
-table(data.si$contact1_rel[data.si$contact1_sexual == 1])
+table(data.si$rel[data.si$sexual == 2])
 # 1 = family member in HH, 
 # 2 = other family member, 3 = colleague, 4 = client (SW),
 # 5 = SW visited, 6 = patient (participant is a HCW), 7 = deceased person, 8 =friend,
 # 9 = neighbor, 10 = church, 11 = co-patient , 12 = sexual partner, 13 = client (shop)
+table(data.si$rel[is.na(data.si$sexual)])
+table(data.si$famtype[is.na(data.si$sexual)]) # check if all rel=1 or rel=2 are parent/child/sibling
+
+table(data.si$sexual)
 
 ## plot matrix?
-table(data.si$occupation_prim[data.si$contact1_sexual == 1], data.si$contact1_rel[data.si$contact1_sexual == 1])
+table(data.si$occupation_prim[data.si$sexual == 1], data.si$rel[data.si$sexual == 1])
 # xdat <- as.data.frame((table(data.si$occupation_prim[data.si$contact1_sexual == 1], data.si$contact1_rel[data.si$contact1_sexual == 1])))
 # var1 <- xdat$Var1[xdat$Freq != 0]; var2 <- xdat$Var2[xdat$Freq != 0]
 # xdat <- xdat[xdat$Var1 %in% unique(var1) & xdat$Var2 %in% unique(var2), ]
@@ -101,146 +145,9 @@ table(data.si$occupation_prim[data.si$contact1_sexual == 1], data.si$contact1_re
 
 # Presymptomatic transmission
 sum(data.si$serial.interval < 0)
-table(data.si$contact1_sexual[data.si$serial.interval < 0])
-sum(data.si$serial.interval[is.na(data.si$contact1_sexual)] < 0)
-sum(data.si$serial.interval[!is.na(data.si$contact1_sexual)] < 0)
-
-##-------------------------------------------------------------------------------------------
-##
-## Regression analysis
-##
-##-------------------------------------------------------------------------------------------
-
-summary(data.si$agenum)
-table(data.si$gender)
-table(data.si$agecat)
-table(data.si$occupation_prim)
-for(i in 1:dim(data.si)[1]){
-  data.si$agenum.i[i] <- data$agenum[data$ID == data.si$contacts[i]]
-  data.si$agecat.i[i] <- data$agecat[data$ID == data.si$contacts[i]]
-  data.si$gender.i[i] <- data$gender[data$ID == data.si$contacts[i]]
-  data.si$occupation_prim.i[i] <- data$occupation_prim[data$ID == data.si$contacts[i]]
-}
-summary(data.si$agenum.i)
-data.si$agediff <- data.si$agenum - data.si$agenum.i
-summary(data.si$agediff) # index case on average 2.9 years younger than secondary case
-table(data.si$agecat.i)
-table(data.si$gender.i)
-table(data.si$occupation_prim.i)
-
-data.si$sexworker <- ifelse(data.si$occupation_prim == 3, 1, 0)
-data.si$sexworker.i <- ifelse(data.si$occupation_prim.i == 3, 1, 0)
-table(data.si$sexworker); table(data.si$sexworker.i)
-data.si$mineworker <- ifelse(data.si$occupation_prim == 4, 1, 0)
-data.si$mineworker.i <- ifelse(data.si$occupation_prim.i == 4, 1, 0)
-table(data.si$mineworker); table(data.si$mineworker.i)
-
-data.si$genital.lesion <- ifelse(data.si$n.lesion.genital > 0, 1, 0)
-data.si$anal.lesion <- ifelse(data.si$n.lesion.anal > 0, 1, 0)
-table(data.si$genital.lesion, data.si$anal.lesion)
-
-data.si$HHmember <- ifelse(data.si$contact1_rel == 1, 1, 0)
-table(data.si$HHmember)
-
-### Scenario 1
-data.sens1 <- data.si
-data.sens1$contact1_sexual <- ifelse(is.na(data.sens1$contact1_sexual) | data.sens1$contact1_sexual == 1, 1, 2)
-table(data.sens1$contact1_sexual)
-
-## Univariate regression
-summary(lm(serial.interval ~ agenum, data = data.sens1))
-summary(lm(serial.interval ~ agenum.i, data = data.sens1))
-summary(lm(serial.interval ~ factor(sexworker), data = data.sens1))
-summary(lm(serial.interval ~ factor(sexworker.i), data = data.sens1))
-summary(lm(serial.interval ~ factor(mineworker), data = data.sens1))
-summary(lm(serial.interval ~ factor(mineworker.i), data = data.sens1))
-summary(lm(serial.interval ~ factor(contact1_sexual), data = data.sens1))
-summary(lm(serial.interval ~ factor(genital.lesion), data = data.sens1))
-summary(lm(serial.interval ~ factor(anal.lesion), data = data.sens1))
-summary(lm(serial.interval ~ factor(HHmember), data = data.sens1))
-
-
-## Multiple regression
-# mod <- lm(serial.interval ~ 
-#             factor(sexworker.i) +
-#             factor(mineworker.i) + 
-#             factor(contact1_sexual)
-#           , data = data.sens1)
-# summary(mod)
-# car::vif(mod)
-mod <- lm(serial.interval ~ 
-            factor(sexworker.i) +
-            # factor(mineworker) +
-            factor(mineworker.i) +
-            # factor(sexworker) + 
-            factor(contact1_sexual)
-          , data = data.sens1)
-summary(mod)
-car::vif(mod)
-
-### Scenario 2
-data.sens2 <- data.si
-data.sens2$contact1_sexual <- ifelse(is.na(data.sens2$contact1_sexual) | data.sens2$contact1_sexual == 2, 2, 1)
-table(data.sens2$contact1_sexual)
-
-## Univariate regression
-summary(lm(serial.interval ~ agenum, data = data.sens2))
-summary(lm(serial.interval ~ agenum.i, data = data.sens2))
-summary(lm(serial.interval ~ sexworker, data = data.sens2))
-summary(lm(serial.interval ~ sexworker.i, data = data.sens2))
-summary(lm(serial.interval ~ mineworker, data = data.sens2))
-summary(lm(serial.interval ~ mineworker.i, data = data.sens2))
-summary(lm(serial.interval ~ contact1_sexual, data = data.sens2))
-summary(lm(serial.interval ~ genital.lesion, data = data.sens2))
-summary(lm(serial.interval ~ anal.lesion, data = data.sens2))
-summary(lm(serial.interval ~ HHmember, data = data.sens2))
-
-## Multiple regression
-mod <- lm(serial.interval ~ 
-            sexworker.i +
-            mineworker.i +
-            contact1_sexual
-          , data = data.sens2)
-summary(mod)
-car::vif(mod)
-
-### Scenario 3
-data.sens3 <- data.si
-for(i in 1:dim(data.sens3)[1]){
-  if(is.na(data.sens3$contact1_sexual[i])){
-    if(is.na(data.sens3$n.lesion.anal[i]) || is.na(data.sens3$n.lesion.genital[i])){
-      data.sens3$contact1_sexual[i] <- 2
-    }else{ 
-      if(data.sens3$n.lesion.anal[i] > 0 | data.sens3$n.lesion.genital[i] > 0){
-        data.sens3$contact1_sexual[i] <- 1
-      }else{
-        data.sens3$contact1_sexual[i] <- 2
-      }
-    }
-  }
-}
-table(data.sens3$contact1_sexual)
-
-## Univariate regression
-summary(lm(serial.interval ~ agenum, data = data.sens3))
-summary(lm(serial.interval ~ agenum.i, data = data.sens3))
-summary(lm(serial.interval ~ sexworker, data = data.sens3))
-summary(lm(serial.interval ~ sexworker.i, data = data.sens3))
-summary(lm(serial.interval ~ mineworker, data = data.sens3))
-summary(lm(serial.interval ~ mineworker.i, data = data.sens3))
-summary(lm(serial.interval ~ contact1_sexual, data = data.sens3))
-summary(lm(serial.interval ~ genital.lesion, data = data.sens3))
-summary(lm(serial.interval ~ anal.lesion, data = data.sens3))
-summary(lm(serial.interval ~ HHmember, data = data.sens3))
-
-## Multiple regression
-mod <- lm(serial.interval ~ 
-            sexworker.i +
-            mineworker.i +
-            contact1_sexual
-          , data = data.sens3)
-summary(mod)
-car::vif(mod)
+table(data.si$sexual[data.si$serial.interval < 0])
+sum(data.si$serial.interval[is.na(data.si$sexual)] < 0)
+sum(data.si$serial.interval[!is.na(data.si$sexual)] < 0)
 
 ##-------------------------------------------------------------------------------------------
 ##
@@ -251,7 +158,7 @@ car::vif(mod)
 library(EpiLPS)
 source('code/functions/estimSI_boot.R')
 
-hist(data.si$serial.interval, breaks = 10)
+hist(data.si$serial.interval, breaks = 20)
 
 xS <- data.frame(sL = data.si$serial.interval - 0.5, sR = data.si$serial.interval + 0.5)
 set.seed(2022)
@@ -293,13 +200,21 @@ dev.off()
 ##---------------------------------------------------------------------------------------
 ## Sexual vs non-sexual transmission: assuming NAs are sexual
 
+# 1 = family member in HH, 
+# 2 = other family member, 3 = colleague, 4 = client (SW),
+# 5 = SW visited, 6 = patient (participant is a HCW), 7 = deceased person, 8 =friend,
+# 9 = neighbor, 10 = church, 11 = co-patient , 12 = sexual partner, 13 = client (shop)
+table(data.si$rel[is.na(data.si$sexual)])
+
 data.sens1 <- data.si
-data.sens1$contact1_sexual <- ifelse(is.na(data.sens1$contact1_sexual) | data.sens1$contact1_sexual == 1, 1, 2)
-table(data.sens1$contact1_sexual)
+# no sexual contact if child or sibling: CHECK!!
+data.sens1$sexual <- ifelse((is.na(data.sens1$sexual) & data.sens1$rel %in% c(1,2)) | data.sens1$sexual == 2, 2, 1)
+data.sens1$sexual <- ifelse(is.na(data.sens1$sexual) | data.sens1$sexual == 1, 1, 2)
+table(data.sens1$sexual)
 
 ## Non-sexual transmission
-xNonSexual <- data.frame(sL = data.sens1$serial.interval[data.sens1$contact1_sexual == 2] - 0.5, 
-                         sR = data.sens1$serial.interval[data.sens1$contact1_sexual == 2] + 0.5)
+xNonSexual <- data.frame(sL = data.sens1$serial.interval[data.sens1$sexual == 2] - 0.5, 
+                         sR = data.sens1$serial.interval[data.sens1$sexual == 2] + 0.5)
 set.seed(2022)
 fitNonSexual <- estimSI_boot(x = xNonSexual)
 round(fitNonSexual$estim, 2)
@@ -348,8 +263,8 @@ for(j in 1:length(up_95)){
 dev.off()
 
 ## Sexual transmission
-xSexual <- data.frame(sL = data.sens1$serial.interval[data.sens1$contact1_sexual == 1] - 0.5, 
-                      sR = data.sens1$serial.interval[data.sens1$contact1_sexual == 1] + 0.5)
+xSexual <- data.frame(sL = data.sens1$serial.interval[data.sens1$sexual == 1] - 0.5, 
+                      sR = data.sens1$serial.interval[data.sens1$sexual == 1] + 0.5)
 set.seed(2022)
 fitSexual <- estimSI_boot(x = xSexual)
 round(fitSexual$estim, 2)
@@ -402,12 +317,12 @@ dev.off()
 ## Sexual vs non-sexual transmission: assuming NAs are non-sexual
 
 data.sens2 <- data.si
-data.sens2$contact1_sexual <- ifelse(is.na(data.sens2$contact1_sexual) | data.sens2$contact1_sexual == 2, 2, 1)
-table(data.sens2$contact1_sexual)
+data.sens2$sexual <- ifelse(is.na(data.sens2$sexual) | data.sens2$sexual == 2, 2, 1)
+table(data.sens2$sexual)
 
 ## Non-sexual transmission
-xNonSexual <- data.frame(sL = data.sens2$serial.interval[data.sens2$contact1_sexual == 2] - 0.5, 
-                         sR = data.sens2$serial.interval[data.sens2$contact1_sexual == 2] + 0.5)
+xNonSexual <- data.frame(sL = data.sens2$serial.interval[data.sens2$sexual == 2] - 0.5, 
+                         sR = data.sens2$serial.interval[data.sens2$sexual == 2] + 0.5)
 set.seed(2022)
 fitNonSexual <- estimSI_boot(x = xNonSexual)
 round(fitNonSexual$estim, 2)
@@ -456,8 +371,8 @@ for(j in 1:length(up_95)){
 dev.off()
 
 ## Sexual transmission
-xSexual <- data.frame(sL = data.sens2$serial.interval[data.sens2$contact1_sexual == 1] - 0.5, 
-                      sR = data.sens2$serial.interval[data.sens2$contact1_sexual == 1] + 0.5)
+xSexual <- data.frame(sL = data.sens2$serial.interval[data.sens2$sexual == 1] - 0.5, 
+                      sR = data.sens2$serial.interval[data.sens2$sexual == 1] + 0.5)
 set.seed(2022)
 fitSexual <- estimSI_boot(x = xSexual)
 round(fitSexual$estim, 2)
@@ -512,23 +427,25 @@ dev.off()
 
 data.sens3 <- data.si
 for(i in 1:dim(data.sens3)[1]){
-  if(is.na(data.sens3$contact1_sexual[i])){
-    if(is.na(data.sens3$n.lesion.anal[i]) || is.na(data.sens3$n.lesion.genital[i])){
-      data.sens3$contact1_sexual[i] <- 2
+  if(is.na(data.sens3$sexual[i])){
+    if(data.sens3$rel[i] %in% c(1,2)){
+      data.sens3$sexual[i] <- 2
+    }else if(is.na(data.sens3$n.lesion.anal[i]) & is.na(data.sens3$n.lesion.genital[i])){
+      data.sens3$sexual[i] <- 2
     }else{ 
       if(data.sens3$n.lesion.anal[i] > 0 | data.sens3$n.lesion.genital[i] > 0){
-        data.sens3$contact1_sexual[i] <- 1
+        data.sens3$sexual[i] <- 1
       }else{
-        data.sens3$contact1_sexual[i] <- 2
+        data.sens3$sexual[i] <- 2
       }
     }
   }
 }
-table(data.sens3$contact1_sexual)
+table(data.sens3$sexual)
 
 ## Non-sexual transmission
-xNonSexual <- data.frame(sL = data.sens3$serial.interval[data.sens3$contact1_sexual == 2] - 0.5, 
-                         sR = data.sens3$serial.interval[data.sens3$contact1_sexual == 2] + 0.5)
+xNonSexual <- data.frame(sL = data.sens3$serial.interval[data.sens3$sexual == 2] - 0.5, 
+                         sR = data.sens3$serial.interval[data.sens3$sexual == 2] + 0.5)
 set.seed(2022)
 fitNonSexual <- estimSI_boot(x = xNonSexual)
 round(fitNonSexual$estim, 2)
@@ -577,8 +494,8 @@ for(j in 1:length(up_95)){
 dev.off()
 
 ## Sexual transmission
-xSexual <- data.frame(sL = data.sens3$serial.interval[data.sens3$contact1_sexual == 1] - 0.5, 
-                      sR = data.sens3$serial.interval[data.sens3$contact1_sexual == 1] + 0.5)
+xSexual <- data.frame(sL = data.sens3$serial.interval[data.sens3$sexual == 1] - 0.5, 
+                      sR = data.sens3$serial.interval[data.sens3$sexual == 1] + 0.5)
 set.seed(2022)
 fitSexual <- estimSI_boot(x = xSexual)
 round(fitSexual$estim, 2)
@@ -627,8 +544,56 @@ for(j in 1:length(up_95)){
 }
 dev.off()
 
+###------------------------------------------------------------
+### Age? Non-sexual for adults vs children
+
+table(data.sens3$agecat, data.sens3$sexual)
+xChild <- data.frame(sL = data.sens3$serial.interval[data.sens3$sexual == 2 & data.sens3$agecat == 3] - 0.5, 
+                      sR = data.sens3$serial.interval[data.sens3$sexual == 2 & data.sens3$agecat == 3] + 0.5)
+set.seed(2022)
+fitChild <- estimSI_boot(x = xChild)
+
+xAdult <- data.frame(sL = data.sens3$serial.interval[data.sens3$sexual == 2 & data.sens3$agecat != 3] - 0.5, 
+                     sR = data.sens3$serial.interval[data.sens3$sexual == 2 & data.sens3$agecat != 3] + 0.5)
+set.seed(2022)
+fitAdult <- estimSI_boot(x = xAdult)
+
+round(fitAdult$estim, 2)
+round(fitChild$estim, 2)
+
+###----------------------------------------------------------------
+### Sexual transmission among adults
+
+table(data.sens3$sexual[data.sens3$agecat == 1])
+
+xSexual <- data.frame(sL = data.sens3$serial.interval[data.sens3$sexual == 1 & data.sens3$agecat != 3] - 0.5,
+                      sR = data.sens3$serial.interval[data.sens3$sexual == 1 & data.sens3$agecat != 3] + 0.5)
+set.seed(2022)
+fitSexual <- estimSI_boot(x = xSexual)
+
+xNonSexual <- data.frame(sL = data.sens3$serial.interval[data.sens3$sexual == 2 & data.sens3$agecat != 3] - 0.5,
+                      sR = data.sens3$serial.interval[data.sens3$sexual == 2 & data.sens3$agecat != 3] + 0.5)
+set.seed(2022)
+fitNonSexual <- estimSI_boot(x = xNonSexual)
+
+round(fitSexual$estim, 2)
+round(fitNonSexual$estim, 2)
+
+###--------------------------------------------------
+### Time between symptom onset and rash
+
+summary(data.sens1$rash_onset)
+summary(data.sens1$symptom.onset)
+data.sens1$time.symptom.to.rash <- as.numeric(data.sens1$rash_onset - data.sens1$symptom.onset)
+summary(data.sens1$time.symptom.to.rash)
+aggregate(data.sens1$time.symptom.to.rash, by = list(data.sens1$sexual), FUN = sd, na.rm = T)
+t.test(data.sens1$time.symptom.to.rash ~ data.sens1$sexual)
+
+data.sens1$adult <- ifelse(data.sens1$agecat == 3, 0, 1)
+aggregate(data.sens1$time.symptom.to.rash[data.sens1$sexual == 2], by = list(data.sens1$adult[data.sens1$sexual == 2]), FUN = sd, na.rm = T)
+t.test(data.sens1$time.symptom.to.rash[data.sens1$sexual == 2] ~ data.sens1$adult[data.sens1$sexual == 2])
 
 
-
-
+aggregate(data.sens1$time.symptom.to.rash[data.sens1$adult == 1], by = list(data.sens1$sexual[data.sens1$adult == 1]), FUN = sd, na.rm = T)
+t.test(data.sens1$time.symptom.to.rash[data.sens1$adult == 1] ~ data.sens1$sexual[data.sens1$adult == 1])
 
