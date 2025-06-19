@@ -3,11 +3,11 @@
 
 * ***Serial interval*** MCMC: sensitivity analysis -> ~if transmission hypothesis is sexual, only include the known sexual contacts (not other contacts)~ OR assign higher probability of being the infector?
 
-* ***Serial interval***: regression model based on observed serial intervals (only one contact, N = 76) --> factors based on characteristics of source case (age, gender, transmission route, HH status, sex worker, ...); Bayesian regression?
+* ***Serial interval***: regression model based on observed serial intervals (only one contact, N = 76) --> factors based on characteristics of source case (age, gender, transmission route, HH status, sex worker, ...); Bayesian regression accounting for uncertainty in transmission pairs
 
 * ***Serial interval***: if only one contact is reported, how likely is it that transmission occurred? (see AJE paper)
 
-* ***Serial interval***: use date of last contact as infection time (i.e. generation interval) --> available for 75 secondary cases, 13 index cases
+* ~***Serial interval***: use date of last contact as infection time (i.e. generation interval) --> available for 75 secondary cases, 13 index cases~
 
 * ***Serial interval***: co-primary cases -> mixture model? (Miura et al?)
 

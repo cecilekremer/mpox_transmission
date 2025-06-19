@@ -77,16 +77,18 @@ estimate_si_reg <- function(case.ids,
     
     int <- theta[1] # intercept
     s <- theta[2] # main effect sexual
-    h <- theta[3] # main effect age
-    sh <- theta[6] # interaction sexual-hh
-    hh <- theta[4] # main effect household
+    # h <- theta[3] # main effect age
+    # sh <- theta[3] # interaction sexual-hh
+    hh <- theta[3] # main effect household
     
-    pred <- int + s*sex.trans[IsContributorToLikel] + hh*hh.trans[IsContributorToLikel] + h*age[IsContributorToLikel] + 
-      sh*sex.trans[IsContributorToLikel]*hh.trans[IsContributorToLikel]
+    pred <- int + s*sex.trans[IsContributorToLikel] + hh*hh.trans[IsContributorToLikel] + h*age[IsContributorToLikel] #+ 
+      # sh*sex.trans[IsContributorToLikel]*hh.trans[IsContributorToLikel]
     
     L <- c()
     for(i in 1:length(IsContributorToLikel)){
-      L[i] <- dnorm(SerialInterval[i], mean = pred[i], sd = theta[5], log = FALSE)
+      # L[i] <- dnorm(SerialInterval[i], mean = pred[i], sd = theta[5], log = FALSE)
+      L[i] <- dnorm(SerialInterval[i], mean = pred[i], sd = theta[4], log = FALSE)
+    
     }
     
     return(sum(log(1e-50 + L)))
@@ -99,15 +101,15 @@ estimate_si_reg <- function(case.ids,
     int.prior <- dnorm(theta[1], mean = 0, sd = 10)
     s.prior <- dnorm(theta[2], mean = 0, sd = 10)
     h.prior <- dnorm(theta[3], mean = 0, sd = 10)
-    sh.prior <- dnorm(theta[6], mean = 0, sd = 10)
+    # sh.prior <- dnorm(theta[3], mean = 0, sd = 10)
     hh.prior <- dnorm(theta[4], mean = 0, sd = 10)
     # mu.prior <- dunif(theta[1], 0, max.si)
     # sd.prior <- dunif(theta[5], 0, 50) # Use normal prior on log(1/sd) ?? normal prior is the conjugate for Bayesian regression assuming a Normal distribution
     sd.prior <- dnorm(log(1/theta[5]), 0, 1)
     
     # return(log(1e-50+mu.prior) + log(1e-50+sd.prior))
-    return(log(1e-50+int.prior) + log(1e-50+s.prior) + log(1e-50+h.prior) + log(1e-50+hh.prior) + 
-             log(1e-50+sh.prior) +
+    return(log(1e-50+int.prior) + log(1e-50+s.prior) + log(1e-50+hh.prior) + log(1e-50+h.prior) #+ 
+             # log(1e-50+sh.prior) +
              log(1e-50+sd.prior))
     
   }
@@ -228,9 +230,11 @@ estimate_si_reg <- function(case.ids,
       theta[2] <- rnorm(1, AcceptedTheta[2], tuning[2])
       theta[3] <- rnorm(1, AcceptedTheta[3], tuning[3])
       theta[4] <- rnorm(1, AcceptedTheta[4], tuning[4])
-      theta[6] <- rnorm(1, AcceptedTheta[6], tuning[6])
+      # theta[6] <- rnorm(1, AcceptedTheta[6], tuning[6])
       
       # Variance
+      # theta[4] <- runif(1, AcceptedTheta[4] - tuning[4], AcceptedTheta[4] + tuning[4])
+      # if(theta[4] <= 0) theta[4] <- AcceptedTheta[4]
       theta[5] <- runif(1, AcceptedTheta[5] - tuning[5], AcceptedTheta[5] + tuning[5])
       if(theta[5] <= 0) theta[5] <- AcceptedTheta[5]
       

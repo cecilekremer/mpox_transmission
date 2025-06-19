@@ -1,46 +1,46 @@
-# 
-# load('data/contact_data_100325.RData')
-# dataKamituga <- data.contact.clean
-# 
-# load('data/contact_data_Goma_100325.RData')
-# dataGoma <- data.contact.clean
-# 
-# names(dataKamituga)[!(names(dataKamituga)%in%names(dataGoma))]
-# names(dataGoma)[!(names(dataGoma)%in%names(dataKamituga))]
-# 
-# dataKamituga <- dataKamituga[,c(1:5,18:23,32:104,114,116,117,118,119,120,121)]
-# dim(dataKamituga); names(dataKamituga)
-# dataKamituga$ID_code <- NA
-# dataKamituga <- dataKamituga[,c(1:86,92,87:91)]
-# 
-# dataGoma <- dataGoma[,c(1:5,17:22,31:103, 112, 114, 115, 116, 117, 118, 119, 120)]
-# dim(dataGoma); names(dataGoma)
-# 
-# all(names(dataGoma) == names(dataKamituga))
-# # which(names(dataGoma) != names(dataKamituga))
-# 
-# dataGoma$loc <- 'Goma'
-# dataKamituga$loc <- 'Kamituga'
-# 
-# data.all <- rbind(dataGoma, dataKamituga)      
-# dim(data.all)
-# 
-# # Create ID combined with location
-# data.all$ID2 <- ifelse(!is.na(data.all$ID_code), paste0(data.all$ID_code, data.all$ID),
-#                        paste0('KM', data.all$ID))
-# table(nchar(data.all$ID2))
-# 
-# table(data.all$vagina_lesion)
-# data.all$genital.lesion <- ifelse(data.all$n.lesion.genital>0, 1, 0)
-# data.all$anal.lesion <- ifelse(data.all$n.lesion.anal>0, 1, 0)
-# 
-# table(data.all$genital.lesion, data.all$vagina_lesion)
-# table(data.all$genital.lesion, data.all$penis_lesion)
-# 
-# table(data.all$vagina_lesion)/sum(table(data.all$vagina_lesion))
-# table(data.all$penis_lesion)/sum(table(data.all$penis_lesion))
-# 
-# save(data.all, file = "data/contact_data_ALL_100325.RData")
+
+load('data/contact_data_100325.RData')
+dataKamituga <- data.contact.clean
+
+load('data/contact_data_Goma_100325.RData')
+dataGoma <- data.contact.clean
+
+names(dataKamituga)[!(names(dataKamituga)%in%names(dataGoma))]
+names(dataGoma)[!(names(dataGoma)%in%names(dataKamituga))]
+
+dataKamituga <- dataKamituga[,c(1:5,18:23,32:104,114,116,117,118,119,120,121)]
+dim(dataKamituga); names(dataKamituga)
+dataKamituga$ID_code <- NA
+dataKamituga <- dataKamituga[,c(1:86,92,87:91)]
+
+dataGoma <- dataGoma[,c(1:5,17:22,31:103, 112, 114, 115, 116, 117, 118, 119, 120)]
+dim(dataGoma); names(dataGoma)
+
+all(names(dataGoma) == names(dataKamituga))
+# which(names(dataGoma) != names(dataKamituga))
+
+dataGoma$loc <- 'Goma'
+dataKamituga$loc <- 'Kamituga'
+
+data.all <- rbind(dataGoma, dataKamituga)
+dim(data.all)
+
+# Create ID combined with location
+data.all$ID2 <- ifelse(!is.na(data.all$ID_code), paste0(data.all$ID_code, data.all$ID),
+                       paste0('KM', data.all$ID))
+table(nchar(data.all$ID2))
+
+table(data.all$vagina_lesion)
+data.all$genital.lesion <- ifelse(data.all$n.lesion.genital>0, 1, 0)
+data.all$anal.lesion <- ifelse(data.all$n.lesion.anal>0, 1, 0)
+
+table(data.all$genital.lesion, data.all$vagina_lesion)
+table(data.all$genital.lesion, data.all$penis_lesion)
+
+table(data.all$vagina_lesion)/sum(table(data.all$vagina_lesion))
+table(data.all$penis_lesion)/sum(table(data.all$penis_lesion))
+
+save(data.all, file = "data/contact_data_ALL_100325.RData")
 
 load('data/contact_data_ALL_100325.RData')
 

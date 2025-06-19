@@ -155,8 +155,8 @@ out <- estimate_si_reg(case.ids = data.si$ID,
                    # routes = transroutes,
                    data = data.si,
                    max.si = max.si, ## Change network when changing min and max si !!!
-                   start.parms = c(rep(0, 4), 5, 0),
-                   tuning.parms = rep(0.5, 6),
+                   start.parms = c(rep(0, 3), 5),
+                   tuning.parms = rep(0.5, 4),
                    mcmc.runs = nrun,
                    burnin = burnin,
                    thin = thin,
@@ -164,4 +164,4 @@ out <- estimate_si_reg(case.ids = data.si$ID,
 )
 
 
-save.image(file = '/lustre1/scratch/326/vsc32693/simNet/SerialIntervalReg_age_HH_310325.RData')
+save.image(file = '/lustre1/scratch/326/vsc32693/simNet/SerialIntervalReg_Sex_HH_040425.RData')

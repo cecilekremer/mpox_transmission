@@ -8,6 +8,16 @@ data.contact <- data[data$visit == 'baseline', ]
 data.contact$date <- as.Date(data.contact$dtenqt) # inclusion date
 summary(data.contact$date)
 
+# table(data.contact$gender) # 1 = male, 2 = female
+# data.contact$les_gen <- ifelse(data.contact$reg_genital>0, 1, 0)
+# load('data/clean_data_Goma_100325.RData')
+# table(data$gender)
+# data$les_gen <- ifelse(data$reg_genital > 0, 1, 0)
+# 
+# table(data.contact$les_gen, data.contact$gender)
+# table(data$les_gen, data$gender)
+
+
 dim(data.contact)
 
 sum(!is.na(data.contact$symptom.onset))

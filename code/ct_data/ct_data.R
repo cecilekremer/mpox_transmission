@@ -18,7 +18,8 @@ ct_goma$OPX_ct_lesion <- as.numeric(ct_goma$OPX_ct_lesion)
 summary(ct_goma$OPX_ct_lesion)
 sum(is.na(ct_goma$HEX_ct_lesion) & is.na(ct_goma$OPX_ct_lesion))
 
-ct_goma <- ct_goma[!(is.na(ct_goma$HEX_ct_lesion) & is.na(ct_goma$OPX_ct_lesion)), ]
+# ct_goma <- ct_goma[!(is.na(ct_goma$HEX_ct_lesion) & is.na(ct_goma$OPX_ct_lesion)), ]
+ct_goma <- ct_goma[!is.na(ct_goma$OPX_ct_lesion), ]
 length(unique(ct_goma$isac))
 
 ## Include other data: transmission route, age, gender
@@ -32,43 +33,57 @@ names(ct_goma)[c(3,8)] <- c('sample_lesion','diagnostics_complete')
 ct_goma <- ct_goma[,-c(37,39)]
 length(unique(ct_goma$isac))
 names(ct_goma)
+summary(ct_goma$OPX_ct_lesion)
 
 ##--------------------------------
 ## Kamituga
-ct_kamituga <- read.csv('./data/kamituga_ct.csv', header = TRUE, sep = ';')
-dim(ct_kamituga); length(unique(ct_kamituga$isac)); length(unique(ct_kamituga$id.conf))
+# ct_kamituga <- read.csv('./data/kamituga_ct.csv', header = TRUE, sep = ';')
+library(readxl)
+ct_kamituga <- read_xlsx('./data/Kamituga_CT_23052025.xlsx', sheet = "Sheet1")
 
-sum(ct_kamituga$clade.Ib.ct != '')
-ct_kamituga <- ct_kamituga[ct_kamituga$clade.Ib.ct != '', ]
-dim(ct_kamituga); length(unique(ct_kamituga$isac)); length(unique(ct_kamituga$id.conf))
-# 219 Ct values for 147 individuals?
+ct_kamituga$isac <- gsub(" ", "",ct_kamituga$`No. DE DEPISTAGE`)
 
-table(ct_kamituga$sample.type)
-table(ct_kamituga$sample.n)
+dim(ct_kamituga); length(unique(ct_kamituga$isac)); #length(unique(ct_kamituga$id.conf))
 
-table(ct_kamituga$xpert.result)
-table(ct_kamituga$xpert.ct[ct_kamituga$xpert.result == 'POSITIF'])
+# sum(ct_kamituga$clade.Ib.ct != '')
+# ct_kamituga <- ct_kamituga[ct_kamituga$clade.Ib.ct != '', ]
+ct_kamituga <- ct_kamituga[!is.na(ct_kamituga$`VALEUR CT`), ]
+table(ct_kamituga$RESULTATS)
+ct_kamituga <- ct_kamituga[ct_kamituga$RESULTATS == 'POSITIF', ]
+dim(ct_kamituga); length(unique(ct_kamituga$isac)); #length(unique(ct_kamituga$id.conf))
+# 935 individuals
 
-table(ct_kamituga$clade.Ib.result)
-table(ct_kamituga$clade.Ib.ct[ct_kamituga$clade.Ib.result == 'positif'])
+# table(ct_kamituga$sample.type)
+# table(ct_kamituga$sample.n)
+# 
+# table(ct_kamituga$xpert.result)
+# table(ct_kamituga$xpert.ct[ct_kamituga$xpert.result == 'POSITIF'])
+# 
+# table(ct_kamituga$clade.Ib.result)
+# table(ct_kamituga$clade.Ib.ct[ct_kamituga$clade.Ib.result == 'positif'])
 
-ct_kamituga$CT <- as.numeric(gsub(',','.',ct_kamituga$clade.Ib.ct))
+# ct_kamituga$CT <- as.numeric(gsub(',','.',ct_kamituga$clade.Ib.ct))
+ct_kamituga$CT <- as.numeric(gsub(',', '.', ct_kamituga$`VALEUR CT`))
 summary(ct_kamituga$CT) # cutoff = 38? (above = negative)
-summary(ct_kamituga$CT[ct_kamituga$clade.Ib.result == 'positif'])
-summary(ct_kamituga$CT[ct_kamituga$clade.Ib.result == 'negatif'])
+# summary(ct_kamituga$CT[ct_kamituga$clade.Ib.result == 'positif'])
+# summary(ct_kamituga$CT[ct_kamituga$clade.Ib.result == 'negatif'])
+hist(ct_kamituga$CT)
 
-### Individuals with more than one Ct value?
-ids.mult.ct <- c()
-for(i in ct_kamituga$isac[duplicated(ct_kamituga$isac)]){
-  cts <- ct_kamituga$CT[ct_kamituga$isac == i]
-  
-  if(max(cts) != min(cts)){
-    ids.mult.ct <- c(ids.mult.ct, i)
-  }
-}
-ids.mult.ct # all equal
+ct_kamituga$sample_date <- as.Date(ct_kamituga$`DATE DE DEPISTAGE`)
 
-ct_kamituga <- ct_kamituga[,c(12,15,5,19,27,23,21)]
+# ### Individuals with more than one Ct value?
+# ids.mult.ct <- c()
+# for(i in ct_kamituga$isac[duplicated(ct_kamituga$isac)]){
+#   cts <- ct_kamituga$CT[ct_kamituga$isac == i]
+#   
+#   if(max(cts) != min(cts)){
+#     ids.mult.ct <- c(ids.mult.ct, i)
+#   }
+# }
+# ids.mult.ct # all equal
+
+# ct_kamituga <- ct_kamituga[,c(12,15,5,19,27,23,21)]
+ct_kamituga <- ct_kamituga[,c(10,11,12)]
 names(ct_kamituga)
 length(unique(ct_kamituga$isac))
 
@@ -81,17 +96,27 @@ load('./data/clean_data_100325.RData')
 data <- data[data$visit=='baseline',]
 demo_kamituga <- data[,c(1,993,893:913,978:980,985,986,989:992,994:996,999,1000,988)]
 
-ct_kamituga <- merge(ct_kamituga, demo_kamituga, by.x = 'isac', by.y = 'isac', all.x = TRUE, all.y = FALSE)
-ct_kamituga <- ct_kamituga[,c(1:14,17:39,41,40,42:44)]
+ct_kamituga <- merge(ct_kamituga, demo_kamituga, by.x = 'isac', by.y = 'isac', all.x = FALSE, all.y = TRUE)
+# ct_kamituga <- ct_kamituga[,c(1:14,17:39,41,40,42:44)]
 ct_kamituga$sample_blood <- NA
 ct_kamituga$sample_saliva<-NA
+ct_kamituga$Ct.value <- ct_kamituga$CT
 
-ct_kamituga <- ct_kamituga[,c(1,2,39,4,5,6,7,8,9:38,42,43,40,41,42)]
+# ct_kamituga <- ct_kamituga[,c(1,2,39,4,5,6,7,8,9:38,42,43,40,41,42)]
+ct_kamituga <- ct_kamituga[,c(1,3,36,4,5:10,13:35,37,41,42,38:40,43)]
 
 ### Combine datasets
-names(ct_kamituga) <- names(ct_goma)
+ct_goma$Ct.value <- ct_goma$OPX_ct_lesion
+ct_goma <- ct_goma[,-c(5,6)] # HEX_ct not needed
+
+ct_goma <- ct_goma[,c(1:3,6:42)]
+
+ct_kamituga$site <- 'Kamituga'
+ct_goma$site <- 'Goma'
+
+all((names(ct_kamituga) == names(ct_goma)) == TRUE)
 ct_all <- rbind(ct_kamituga, ct_goma)
 dim(ct_all); length(unique(ct_all$isac))
 
-save(ct_all, file = 'CT_data_170325.RData')
+save(ct_all, file = 'CT_data_230525.RData')
 

@@ -1,7 +1,7 @@
 
-load('data/clean_data.RData')
+load('data/clean_data_100325.RData')
 
-dim(data); names(data)
+names(data); dim(data)
 
 ## Hospital outcome
 data$hospital_outcome <- data$isd_part # 1 = exit, 2 = consent withdrawn, 3 = deceased, 4 = LTFU
@@ -15,6 +15,7 @@ data$other_hosp <- data$si_pde___4
 ## Baseline visit: patient characteristics
 
 data_base <- data[data$visit == 'baseline', ]
+dim(data_base)
 data_base$date <- as.Date(data_base$dtenqt) # inclusion date
 summary(data_base$date)
 
@@ -27,9 +28,12 @@ round(table(data_base$occupation_prim[data_base$agecat == 1])/sum(table(data_bas
 table(data_base$occupation_sec)
 
 table(data_base$HH_size); median(data_base$HH_size, na.rm = T); median(data_base$HH_size[data_base$HH_size!=132], na.rm = T)
+summary(data_base$HH_size[data_base$HH_size!=132])
 table(data_base$HH_mpox); table(data_base$HH_mpox[data_base$HH_size > 1])
 table(data_base$HH_children); summary(data_base$HH_children)
-sum(data_base$HH_children[data_base$HH_size > 1] == 0, na.rm = T)
+sum(data_base$HH_children[data_base$HH_size > 0] == 0, na.rm = T)
+
+table(data_base$HH_mpox)
 
 table(data_base$travel) # 1 = yes, 2 = no
 table(data_base$provnac)
@@ -47,11 +51,11 @@ table(data_base$manipulmort) # touching or eating of animals that died naturally
 ## Previous vaccination
 table(data_base$mpox_vacc_recent) # 1 = yes, 2 = no, 3 = NA
 table(data_base$smallpox_vacc) # 1 = yes, 2 = no, 3 = NA (vaccinated before 1980, verified by skin mark)
-data_base$contact1_id[data_base$smallpox_vacc==1] # none of those that are vaccinated have identified contacts in the study
+data_base$contact1_id[data_base$smallpox_vacc==1] # only some of those that are vaccinated have identified contacts in the study
 
 ## Previous infection
 table(data_base$previous_mpox)
-summary(data_base$date_previous_mpox)
+summary(as.Date(data_base$date_previous_mpox))
 table(data_base$already_included)
 data_base$already_included_id[data_base$already_included==1]
 
@@ -255,62 +259,67 @@ data_fu$vagina_lesion <- data_fu$vulvo_vaginale
 ## Combine symptom data
 
 names(data_base)
-data_base <- data_base[,c(1,7,21:26,234,235,445,878,879:1013)]
-data_base <- data_base[,c(1,2,9:147)]
-data_base <- data_base[,c(1,2,6, 7:120, 122, 3:5, 123:141)]
+data_base <- data_base[,c(1,7,21:26,234,235,449,881:1027)]
+data_base <- data_base[,c(1,2,23,9,10,11,24:158)]
+# data_base <- data_base[,c(1,2,6, 7:120, 122, 3:5, 123:141)]
 dim(data_base)
 names(data_base)[2:3] <- c('date','visit')
 data_base$date <- as.Date(data_base$date)
+data_base <- data_base[,c(1:120, 122:141)]
 
 names(data_hospital)
-data_hospital <- data_hospital[,c(1:3,236,237,446,879:1012)]
+data_hospital <- data_hospital[,c(1,2,3,9,236,237,450,894:1026)]
 data_hospital$visit <- paste0('hosp_', data_hospital$n_visit)
-data_hospital <- data_hospital[,c(1,2,7,8:122,4:6,123:140)]
 data_hospital$followupID <- NA
+data_hospital <- data_hospital[,c(1,2,141,5,6,7,8:140,142)]
 dim(data_hospital)
 names(data_hospital)[2:3] <- c('date','visit')
 
 names(data_fu)
-data_fu <- data_fu[,c(1,724,725,234,235,445,878:1019)]
+data_fu <- data_fu[,c(1,728,729,234,235,449,881:1033)]
 data_fu$visit <- data_fu$jr_delavisite
-data_fu <- data_fu[,c(1,2,7,8:132,134,135,136,140,141,142,143,147,4:6)]
+data_fu <- data_fu[,c(1:6, 18:143, 145,146,147,151,152,153,154,158)]
 data_fu$followupID <- NA
 dim(data_fu)
-data_fu <- data_fu[,c(1:118,137:139,119:136,140)]
+data_fu <- data_fu[,c(1:6,8:141)]
 names(data_fu)[2:3] <- c('date','visit')
 data_fu$visit <- ifelse(data_fu$visit == 1, 'day29', 'day59')
 
 names(data_fu) == names(data_base)
 names(data_base) == names(data_hospital)
 
-save(data_hospital, file = 'data/hospital_data.RData')
-save(data_base, file = 'data/baseline_data.RData')
-save(data_fu, file = 'data/followup_data.RData')
+save(data_hospital, file = 'data/hospital_data_100325.RData')
+save(data_base, file = 'data/baseline_data_100325.RData')
+save(data_fu, file = 'data/followup_data_100325.RData')
 
 data_symptoms <- rbind(data_hospital, data_base, data_fu)
 dim(data_symptoms); length(unique(data_symptoms$isac))
 table(data_symptoms$visit)
 
-save(data_symptoms, file = 'data/symptom_data.RData')
+save(data_symptoms, file = 'data/symptom_data_100325.RData')
 
 ##----------------------------------------------------------------------------------------------
 ## Duration of hospitalization
 
-load('data/symptom_data.RData')
+load('data/symptom_data_100325.RData')
 
 names(data_symptoms[grepl('hosp', data_symptoms$visit), ])
 data_symptoms$hospital_duration <- as.numeric(data_symptoms$hospital_discharge - data_symptoms$date)
+# summary(as.numeric(data_base$hospital_discharge - data_base$date))
 summary(data_symptoms$hospital_duration); sum(!is.na(data_symptoms$hospital_duration))
+
+length(unique(data_symptoms$isac[data_symptoms$hospital_duration < 0]))
 
 ##-----------------------------------------------------------------------------------------------
 ## Duration of symptoms
 
-symptom.dat <- data_symptoms[,c(1,2,3,99,115,118:139)]
+symptom.dat <- data_symptoms[,c(1,2,3,4,5,6,102:106,122:139)]
+symptom.dat <- symptom.dat[,c(1:3,7,4:6, 8:29)]
 symptom.dat <- data.frame(symptom.dat)
 prop.included <- as.data.frame(table(symptom.dat$visit))
-prop.included$Var1 <- factor(as.character(prop.included$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+prop.included$Var1 <- factor(as.character(prop.included$Var1), levels = c('baseline', paste0('hosp_',c(1:28)), 'day29', 'day59'))
 prop.included <- prop.included[order(prop.included$Var1), ]
-prop.included$Prop <- prop.included$Freq / 415
+prop.included$Prop <- prop.included$Freq / 590
 symp <- c()
 cols <- c(
   "dodgerblue2", "#E31A1C", # red
@@ -329,26 +338,26 @@ cols <- c(
   "orchid1", 
   "deeppink1", 
   "blue1", "steelblue4",
-  # "darkturquoise", 
-  # "green1", 
-  # "yellow4", "yellow3",
-  # "darkorange4", 
+  "darkturquoise",
+  "green1",
+  "yellow4", "yellow3",
+  "darkorange4",
   "brown"
 )
 c <- 1
-symp.evol <- matrix(NA, nrow = length(unique(symptom.dat$visit)), ncol = length(names(symptom.dat)[7:26]))
+symp.evol <- matrix(NA, nrow = length(unique(symptom.dat$visit)), ncol = length(names(symptom.dat)[5:29]))
 jpeg('results/symptoms.jpeg', width = 30, height = 20, units = 'cm', res = 300)
-for(s in 7:26){
+for(s in 5:29){
   dat <- as.data.frame(table(symptom.dat[,3], symptom.dat[,s]))
   dat <- dat[dat$Var2 == 1, ]
-  dat$Var1 <- factor(as.character(dat$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+  dat$Var1 <- factor(as.character(dat$Var1), levels = c('baseline', paste0('hosp_',c(1:28)), 'day29', 'day59'))
   dat <- dat[order(dat$Var1), ]
   dat$Prop <- dat$Freq / prop.included$Freq
-  dat$Freq <- dat$Freq / 415
+  dat$Freq <- dat$Freq / 590
   dat$visit <- 1:dim(dat)[1]
   symp.evol[,c] <- dat$Prop
   symp <- c(symp, names(symptom.dat)[s])
-  if(s == 7){
+  if(s == 5){
     plot(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1))
   }else{
     lines(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1), col = cols[c])
@@ -361,7 +370,7 @@ legend('topright', c(symp, 'prop of cases included'), col = c(cols, 'darkgrey'),
 dev.off()
 
 # Proportion of patients in hospital on that visit that report a certain symptom
-colnames(symp.evol) <- names(symptom.dat)[7:26]
+colnames(symp.evol) <- names(symptom.dat)[5:29]
 rownames(symp.evol) <- dat$Var1
 brk <- 50
 library(plot.matrix)
@@ -382,12 +391,18 @@ dev.off()
 ##-----------------------------------------------------------------------------------------------
 ## Duration of lesions
 
-symptom.dat <- data_symptoms[,c(1,2,3,99,115,100:103)]
+table(data$oral_lesion)
+table(data$tonsil_lesion)
+table(data$penis_lesion)
+table(data$vagina_lesion)
+
+symptom.dat <- data_symptoms[,c(1,2,3,4,5,6,102:106,122:139)]
+symptom.dat <- symptom.dat[,c(1:3,7,4:6, 8:29)]
 symptom.dat <- data.frame(symptom.dat)
 prop.included <- as.data.frame(table(symptom.dat$visit))
-prop.included$Var1 <- factor(as.character(prop.included$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+prop.included$Var1 <- factor(as.character(prop.included$Var1), levels = c('baseline', paste0('hosp_',c(1:28)), 'day29', 'day59'))
 prop.included <- prop.included[order(prop.included$Var1), ]
-prop.included$Prop <- prop.included$Freq / 415
+prop.included$Prop <- prop.included$Freq / 590
 symp <- c()
 cols <- c(
   "dodgerblue2", "#E31A1C", 
@@ -395,19 +410,19 @@ cols <- c(
   "#FF7F00" 
 )
 c <- 1
-symp.evol <- matrix(NA, nrow = length(unique(symptom.dat$visit)), ncol = length(names(symptom.dat)[6:9]))
+symp.evol <- matrix(NA, nrow = length(unique(symptom.dat$visit)), ncol = length(names(symptom.dat)[8:11]))
 jpeg('results/lesions.jpeg', width = 30, height = 20, units = 'cm', res = 300)
-for(s in 6:9){
+for(s in 8:11){
   dat <- as.data.frame(table(symptom.dat[,3], symptom.dat[,s]))
   dat <- dat[dat$Var2 == 1, ]
-  dat$Var1 <- factor(as.character(dat$Var1), levels = c('baseline', paste0('hosp_',c(1:22)), 'day29', 'day59'))
+  dat$Var1 <- factor(as.character(dat$Var1), levels = c('baseline', paste0('hosp_',c(1:28)), 'day29', 'day59'))
   dat <- dat[order(dat$Var1), ]
   dat$Prop <- dat$Freq / prop.included$Freq
-  dat$Freq <- dat$Freq / 415
+  dat$Freq <- dat$Freq / 590
   dat$visit <- 1:dim(dat)[1]
   symp.evol[,c] <- dat$Prop
   symp <- c(symp, names(symptom.dat)[s])
-  if(s == 6){
+  if(s == 8){
     plot(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1))
   }else{
     lines(dat$visit, dat$Freq, type = 'l', xlab = '', ylab = 'Proportion of included patients', xaxt = 'n', ylim = c(0, 1), col = cols[c])
@@ -420,7 +435,7 @@ legend('topright', c(symp, 'prop of cases included'), col = c(cols, 'darkgrey'),
 dev.off()
 
 # Proportion of patients in hospital on that visit that report a certain symptom
-colnames(symp.evol) <- names(symptom.dat)[6:9]
+colnames(symp.evol) <- names(symptom.dat)[8:11]
 rownames(symp.evol) <- dat$Var1
 brk <- 50
 library(plot.matrix)

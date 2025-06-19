@@ -1,5 +1,8 @@
 
-data <- read.csv('data/rawData.csv', header = T, sep = ',')
+# dataGoma <- read.csv('data/rawDataGoma.csv', header = T)
+data <- read.csv('data/rawData_100325.csv', header = T)
+
+# names(dataGoma)[!(names(dataGoma)%in%names(data))]
 
 ## Occupation
 data$occupation1 <- apply(data[, paste0("occupation___", 1:19)], 1, function(row){
@@ -136,6 +139,7 @@ table(data$otr_vimr) # pork
 ## Cases that meet inclusion criteria
 ids.incl <- data$isac[data$critcompl_incl == 1]
 data <- data[data$isac %in% ids.incl, ]
+dim(data[data$redcap_repeat_instance=='',])
 
 ##-----------------------------------------------------------------------------
 ## PCR confirmed cases
@@ -160,6 +164,7 @@ dim(data)
 length(unique(data$isac))
 table(data$sexe) # 1 = male, 2 = female
 table(data$cathgr) # age category: 1 = adult (>18y), 2 = minor (12-17y), 3 = minor (<12y)
+summary(data$ag_an)
 
 ##----------------------------------------------------------------------------------------------
 ## Longitudinal data (hospital follow-up)
@@ -196,7 +201,7 @@ table(data$jr_delavisite) # 1 = day 29; 2 = day 59
 ##------------------------------------------------------------------------------------------------
 ## Rename variables
 
-data$agecat <- data$cathgr # 1 = >18y; 2 = 12-17y
+data$agecat <- data$cathgr # 1 = >18y; 2 = 12-17y; 3 = <12y
 data$ageyear <- data$ag_an # NA if agecat = 3 & under 2y old
 data$agemonth <- data$ag_mois
 data$ageweek <- data$ag_seme
@@ -208,6 +213,7 @@ data$agenum[data$redcap_repeat_instrument==''] <- ifelse(!is.na(data$ageyear[dat
                                                                 data$agemonth[data$redcap_repeat_instrument=='']/12,
                                                                 data$ageweek[data$redcap_repeat_instrument=='']/52))
 hist(data$agenum[data$redcap_repeat_instrument==''])
+summary(data$agenum)
 
 data$HZ <- data$zs # health zone
 data$air_HZ <- data$air_st # aire de sante
@@ -270,15 +276,19 @@ data$contact1_rel <- ifelse(grepl('patient', data$otr_typrel, ignore.case = T), 
 data$contact1_rel <- ifelse(grepl('mari', data$otr_typrel, ignore.case = T), 1, data$contact1_rel)
 data$contact1_rel <- ifelse(grepl('conjointe', data$otr_typrel, ignore.case = T), 1, data$contact1_rel)
 data$contact1_rel <- ifelse(grepl('sexuel', data$otr_typrel, ignore.case = T), 12, data$contact1_rel)
+table(data$contact1_rel, data$otr_typrel)
 
 data$contact2_rel <- ifelse(grepl('voisin', data$otr_typrel_2, ignore.case = T), 9, data$typrltpatien_2)
 data$contact2_rel <- ifelse(grepl('patient', data$otr_typrel_2, ignore.case = T), 11, data$contact2_rel)
 data$contact2_rel <- ifelse(grepl('client', data$otr_typrel_2, ignore.case = T), 13, data$contact2_rel)
+table(data$contact2_rel, data$otr_typrel_2)
 
 data$contact3_rel <- ifelse(grepl('voisin', data$otr_typrel_3, ignore.case = T), 9, data$typrltpatien_3)
 data$contact3_rel <- ifelse(grepl('patient', data$otr_typrel_3, ignore.case = T), 11, data$contact3_rel)
+table(data$contact3_rel, data$otr_typrel_3)
 
 data$contact4_rel <- ifelse(grepl('patient', data$otr_typrel_4, ignore.case = T), 11, data$typrltpatien_4)
+table(data$contact4_rel, data$otr_typrel_4)
 
 data$contact1_famtype <- data$ty_mbre # 1 = parent, 2 = child, 3 = sibling, 4 = other ('data$otr_mbfam1')
 data$contact2_famtype <- data$ty_mbre_2
@@ -329,12 +339,15 @@ data$contact4_clothes <- data$mmvetm_4
 data$smallpox_vacc <- data$partvaccin # vaccinated against smallpox before 1980; 1 = yes, 2 = no, 3 = NA
 data$mpox_vacc_recent <- data$rsenvacci # recent mpox vaccination (since 2024) --> none
 
+table(data$smallpox_vacc)
+table(data$mpox_vacc_recent)
+
 ## Previous infection
 data$previous_mpox <- data$ftmpox # already had mpox --> N = 9
 library(lubridate)
 data$date_previous_mpox <- ifelse(data$temps == 1,
-                                      as.Date(data$date) - weeks(data$tpjour), # X weeks ag0
-                                      as.Date(data$date) - data$tpmois*30.437 # X months ago
+                                      as.Date(data$dtenqt) - weeks(data$tpjour), # X weeks ag0
+                                      as.Date(data$dtenqt) - data$tpmois*30.437 # X months ago
 )
 data$already_included <- data$patinclu # 3 patients already included
 data$already_included_id <- data$nmpatincl
@@ -348,7 +361,7 @@ data$HIV_test_during_consult <- data$tstvih # none
 
 ## Symptoms
 data$symptom.onset <- as.Date(data$dtenqt) - data$dpdsympt
-summary(data$symptom.onset)
+summary(data$symptom.onset[data$visit=='baseline'])
 # info on which symptoms
 
 ## Clinical presentation: lesions on mucous membranes
@@ -367,13 +380,14 @@ data$id_adult <- data$codeadulte
 data$id_child <- data$codeenfant
 
 ## Hospital follow-up 
-summary(data$dtvisit); table(data$visit); table(data$suivi_fait) 
+summary(as.Date(data$dtvisit)); table(data$visit); table(data$suivi_fait) 
 
 ## Extract probable transmission route
 # unique(data$transm_hyp)
 
 data$transm_sexual <- ifelse(
-  (grepl('sexuel', data$transm_hyp, ignore.case = T) | grepl('sexual', data$transm_hyp, ignore.case = T)) 
+  (grepl('sexuel', data$transm_hyp, ignore.case = T) | grepl('sexual', data$transm_hyp, ignore.case = T) | 
+     grepl('PS', data$transm_hyp, ignore.case = T) | grepl('séquelle', data$transm_hyp, ignore.case = T)) 
   & !grepl('non sexuel', data$transm_hyp, ignore.case = T),
   1, 0)
 table(data$transm_sexual)
@@ -394,8 +408,8 @@ table(data$contact1_rel, data$transm_repeatedcontact)
 ##------------------------------------------------------------------------------------------------
 ## Save clean dataset
 
-save(data, file = 'data/clean_data.RData')
-save(data.pcrNeg, file = 'data/data_negativePCR.RData')
+save(data, file = 'data/clean_data_100325.RData')
+save(data.pcrNeg, file = 'data/data_negativePCR_100325.RData')
 
 table(data.pcrNeg$sexe)
 table(data.pcrNeg$lesion_cuta)
@@ -403,7 +417,7 @@ table(data.pcrNeg$lesion_cuta)
 ##-----------------------------------------------------------------------------
 ## Longitudinal data
 
-load('data/clean_data.RData')
+load('data/clean_data_100325.RData')
 names(data); dim(data)
 
 ## PCR / Ct values
