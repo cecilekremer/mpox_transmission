@@ -4,4 +4,4 @@ To install R, we refer to https://cran.r-project.org/doc/manuals/r-release/R-adm
 
 # R code
 The following R scripts are included in this repository:
-
+* 
