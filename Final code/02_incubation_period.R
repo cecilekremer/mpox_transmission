@@ -45,7 +45,7 @@
 
 
 ## Data containing one row for each case x contact x exposure
-load('data/contact_data_ALL_100325.RData')
+load('./data/contact_data_ALL_100325.RData')
 data <- data.all
 dim(data); length(unique(data$ID2))
 
@@ -204,23 +204,6 @@ summary(df_long$b_plus - df_long$a_plus)
 summary(df_long$a_plus); summary(df_long$a_minus)
 
 df_longg <- df_long[df_long$a_plus-df_long$a_minus >= 0, ]
-# df_longg <- df_longg[df_longg$sexual2 == 2, ]
-# df_longg <- df_longg[df_longg$agecat == 1, ]
-
-# data_stan <- list(
-#   N = nrow(df_longg),
-#   a_minus = df_longg$a_minus,
-#   a_plus = df_longg$a_plus,
-#   b_minus = df_longg$b_minus,
-#   b_plus = df_longg$b_plus,
-#   # incubation = 0,
-#   upper_bound = as.numeric(max(data.all$date) - mindate), # to account for truncation
-#   incl_cov = 2, # include covariate? 1 = no, 2 = yes
-#   sexual = ifelse(df_longg$sexual1 == 2, 0, 1),
-#   # sexual = ifelse(df_longg$agecat == 1, 0, 1), # 0 = adult, 1 = child
-#   n_steps_prior = df_longg$a_plus - df_longg$a_minus
-# )
-# table(data_stan$sexual)
 
 df_longg <- df_longg[df_longg$type == 2, ]
 df_longg <- df_longg[is.na(df_longg$ID_code), ] # Kamituga = ID code NA
@@ -245,17 +228,8 @@ data_stan <- list(
 table(data_stan$sexual)
 table(data_stan$age)
 table(data_stan$kamituga)
-# table(data_stan$kamituga, data_stan$age)
-# table(data_stan$kamituga, data_stan$sexual)
 
-# mod_Weibull <- rstan::stan_model('./code/stan_incub_ward.stan', model_name = 'mod_Weibull')
-# save(mod_Weibull, file = 'mod_Weibull.RData')
-# mod_Weibull_noTrunc <- rstan::stan_model('./code/stan_incub_ward_noTrunc.stan', model_name = 'mod_Weibull_noTrunc')
-# save(mod_Weibull_noTrunc, file = 'mod_Weibull_noTrunc.RData')
-# mod_Weibull_prob <- rstan::stan_model('./code/stan_incub_ward_prob_v2.stan', model_name = 'mod_Weibull_prob')
-# save(mod_Weibull_prob, file = 'mod_Weibull_prob.RData')
-
-# mod_Weibull_reg <- rstan::stan_model('./code/incubation_final/stan_incub_ward_reg.stan', model_name = 'mod_Weibull_reg')
+# mod_Weibull_reg <- rstan::stan_model('./stan_incub_reg.stan', model_name = 'mod_Weibull_reg')
 # save(mod_Weibull_reg, file = 'mod_Weibull_reg.RData')
 
 table(df_longg$type) # 1 = single exposure
@@ -263,7 +237,7 @@ table(df_longg$type) # 1 = single exposure
 # load('mod_Weibull.RData')
 # load('mod_Weibull_noTrunc.RData')
 # load('mod_Weibull_prob.RData')
-load('mod_Weibull_reg.RData')
+load('./mod_Weibull_reg.RData')
 
 # initf <- function(chain_id = 1){
 #   meaninit = rep(5, data_stan$incl_cov)

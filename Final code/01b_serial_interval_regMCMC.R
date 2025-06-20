@@ -3,6 +3,7 @@
 
 # https://medium.com/@tinonucera/bayesian-linear-regression-from-scratch-a-metropolis-hastings-implementation-63526857f191
 
+setwd('./Final_code')
 
 load('data/contact_data_100325.RData')
 data <- data.contact.clean
@@ -122,8 +123,8 @@ library(igraph)
 ## MCMC to estimate serial interval using normal distribution
 
 # Change network when changing min and max si !!!
-load('code/01_baseline/trees_100325_base.RData')
-load('code/01_baseline/onsets_100325_base.RData')
+load('./results/trees_100325_base.RData')
+load('./results/onsets_100325_base.RData')
 # load('code/serialinterval_final/routes_100325_base.RData')
 
 # # check if all networks are unique
@@ -142,7 +143,7 @@ trees[,1] <- 1:dim(trees)[1]
 onsets[,1] <- 1:dim(onsets)[1]
 # transroutes[,1] <- 1:dim(transroutes)[1]
 
-source('code/01_baseline/functions/fun_reg_si.R')
+source('./fun_reg_si.R')
 
 nrun <- 5000000
 burnin <- 0.4

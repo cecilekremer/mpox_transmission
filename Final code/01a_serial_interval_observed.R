@@ -1,6 +1,8 @@
 library(dplyr)
 library(tidyr)
 
+setwd('./Final code/')
+
 load('data/contact_data_100325.RData')
 data <- data.contact.clean
 
@@ -168,38 +170,6 @@ set.seed(2022)
 fitS <- estimSI(x = xS)
 round(fitS$npestim, 2)
 
-# # Plot cdf
-# jpeg('results/SI_observed/plotCDF.jpeg', width = 30, height = 20, units = 'cm', res = 300)
-# bsLO <- min(xS$sL) - 0.5
-# bsRO <- max(xS$sR) + 0.5
-# sfineO <- seq(bsLO, bsRO, length = 100)
-# dsfineO <- sfineO[2] - sfineO[1]
-# par(mfrow = c(1,1))
-# # Empirical CDF
-# ecdf_obs <- ecdf(data.si$serial.interval)
-# plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
-# # Non-parametric CDF
-# lines(sfineO, sapply(sfineO, fitS$Fhat), type = 'l', col = 'darkblue',
-#       xlab = "Serial interval (days)",
-#       ylab = "Cumulative distribution function",
-#       xaxt = 'n', xlim = c(min(xS$sL)-1, max(xS$sR)+1),
-#       cex.lab = 2, cex.axis = 1.5, lwd = 3
-# )
-# title(main = 'All observed transmission pairs', cex.main = 2)
-# axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
-# low_95 <- fitS$estim$CI95p_l[3:7] 
-# up_95 <- fitS$estim$CI95p_r[3:7]
-# perc <- c(0.05,0.25,0.50,0.75,0.95)
-# perctxt <- paste0(perc * 100, "th percentile")
-# for(j in 1:length(up_95)){
-#   lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
-#         col = "darkblue", lwd = 3, lty = 1)
-#   lines(x = fitS$estim$Estim[3:7], perc, type = "p", pch = 16,
-#         col = "darkblue", cex = 2)
-#   text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
-# }
-# dev.off()
-
 ##---------------------------------------------------------------------------------------
 ## Sexual vs non-sexual transmission: assuming NAs are sexual
 
@@ -222,99 +192,12 @@ set.seed(2022)
 fitNonSexual <- estimSI(x = xNonSexual)
 round(fitNonSexual$npestim, 2)
 
-# # Plot cdf
-# bsLO <- min(xNonSexual$sL) - 0.5
-# bsRO <- max(xNonSexual$sR) + 0.5
-# sfineO <- seq(bsLO, bsRO, length = 100)
-# dsfineO <- sfineO[2] - sfineO[1]
-# BO <- nrow(fitNonSexual$bootsamples)
-# sboot_cdfO <- matrix(0, nrow = BO, ncol = 100)
-# for(b in 1:BO){
-#   fsbootO <- histosmooth(fitNonSexual$bootsamples[b,], xl = bsLO, xr = bsRO, K = 12)
-#   sboot_densO <- sapply(sfineO, fsbootO$fdens)
-#   sboot_densO <- sboot_densO/sum(sboot_densO * dsfineO)
-#   sboot_cdfO[b,] <- cumsum(sboot_densO * dsfineO)
-#   print(b)
-# }
-# 
-# jpeg('results/SI_observed/plotCDFnonSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
-# par(mfrow = c(1,1))
-# # Empirical CDF
-# ecdf_obs <- ecdf(data.sens1$serial.interval[data.sens1$contact1_sexual == 2])
-# plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
-# # Non-parametric CDF
-# lines(sfineO, sapply(sfineO, fitNonSexual$Fhat), type = 'l', col = 'darkblue',
-#       xlab = "Serial interval (days)",
-#       ylab = "Cumulative distribution function",
-#       xaxt = 'n', xlim = c(min(xNonSexual$sL)-1, max(xNonSexual$sR)+1),
-#       cex.lab = 2, cex.axis = 1.5, lwd = 3
-# )
-# title(main = 'Non-sexual transmission', cex.main = 2)
-# axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
-# # 95%CI for selected percentiles
-# low_95 <- fitNonSexual$estim$CI95p_l[3:7] 
-# up_95 <- fitNonSexual$estim$CI95p_r[3:7]
-# perc <- c(0.05,0.25,0.50,0.75,0.95)
-# perctxt <- paste0(perc * 100, "th percentile")
-# for(j in 1:length(up_95)){
-#   lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
-#         col = "darkblue", lwd = 3, lty = 1)
-#   lines(x = fitNonSexual$estim$Estim[3:7], perc, type = "p", pch = 16,
-#         col = "darkblue", cex = 2)
-#   text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
-# }
-# dev.off()
-
 ## Sexual transmission
 xSexual <- data.frame(sL = data.sens1$serial.interval[data.sens1$sexual == 1] - 0.5, 
                       sR = data.sens1$serial.interval[data.sens1$sexual == 1] + 0.5)
 set.seed(2022)
 fitSexual <- estimSI(x = xSexual)
 round(fitSexual$npestim, 2)
-
-# # Plot cdf
-# bsLO <- min(xSexual$sL) - 0.5
-# bsRO <- max(xSexual$sR) + 0.5
-# sfineO <- seq(bsLO, bsRO, length = 100)
-# dsfineO <- sfineO[2] - sfineO[1]
-# BO <- nrow(fitSexual$bootsamples)
-# sboot_cdfO <- matrix(0, nrow = BO, ncol = 100)
-# for(b in 1:BO){
-#   fsbootO <- histosmooth(fitSexual$bootsamples[b,], xl = bsLO, xr = bsRO, K = 12)
-#   # fsbootO <- histosmooth(fitSexual$bootsamples[b,], K = 12)
-#   sboot_densO <- sapply(sfineO, fsbootO$fdens)
-#   sboot_densO <- sboot_densO/sum(sboot_densO * dsfineO)
-#   sboot_cdfO[b,] <- cumsum(sboot_densO * dsfineO)
-#   print(b)
-# }
-# 
-# jpeg('results/SI_observed/plotCDFSexual.jpeg', width = 30, height = 20, units = 'cm', res = 300)
-# par(mfrow = c(1,1))
-# # Empirical CDF
-# ecdf_obs <- ecdf(data.sens1$serial.interval[data.sens1$contact1_sexual == 1])
-# plot(ecdf_obs, main = '', xlab = '', ylab = '', xaxt = 'n', col = 'grey')
-# # Non-parametric CDF
-# lines(sfineO, sapply(sfineO, fitSexual$Fhat), type = 'l', col = 'darkblue',
-#       xlab = "Serial interval (days)",
-#       ylab = "Cumulative distribution function",
-#       xaxt = 'n', xlim = c(min(xSexual$sL)-1, max(xSexual$sR)+1),
-#       cex.lab = 2, cex.axis = 1.5, lwd = 3
-# )
-# title(main = 'Sexual transmission', cex.main = 2)
-# axis(1, at=seq(bsLO, bsRO, by = 2), cex.axis = 1.5)
-# # 95%CI for selected percentiles
-# low_95 <- fitSexual$estim$CI95p_l[3:7] 
-# up_95 <- fitSexual$estim$CI95p_r[3:7]
-# perc <- c(0.05,0.25,0.50,0.75,0.95)
-# perctxt <- paste0(perc * 100, "th percentile")
-# for(j in 1:length(up_95)){
-#   lines(x = c(low_95[j],up_95[j]), y = c(perc[j],perc[j]), type = "l",
-#         col = "darkblue", lwd = 3, lty = 1)
-#   lines(x = fitSexual$estim$Estim[3:7], perc, type = "p", pch = 16,
-#         col = "darkblue", cex = 2)
-#   text(x = up_95[j]+1.4, y = perc[j]-0.05, perctxt[j], offset = 1, cex = 1.5)
-# }
-# dev.off()
 
 ##---------------------------------------------------------------------------------------
 ## Sexual vs non-sexual transmission: assuming NAs are non-sexual
