@@ -180,11 +180,6 @@ for(i in 1:dim(df_long)[1]){
     }
   }
 }
-table(df_long$sexual)
-table(df_long$sexual1)
-table(df_long$sexual2)
-table(df_long$sexual3)
-table(df_long$agecat)
 
 ## Set exposure windows
 mindate <- min(as.Date(df_long$lastcontact)) - 60
@@ -205,10 +200,49 @@ summary(df_long$a_plus); summary(df_long$a_minus)
 
 df_longg <- df_long[df_long$a_plus-df_long$a_minus >= 0, ]
 
-df_longg <- df_longg[df_longg$type == 2, ]
-df_longg <- df_longg[is.na(df_longg$ID_code), ] # Kamituga = ID code NA
+# df_longg <- df_longg[df_longg$type == 2, ]
+# df_longg <- df_longg[is.na(df_longg$ID_code), ] # Kamituga = ID code NA
 
 dim(df_longg)
+
+
+##-------------------------------------------------------------------------------
+## Weibull posterior estimates
+
+data_stan <- list(
+  N = nrow(df_longg),
+  a_minus = df_longg$a_minus,
+  a_plus = df_longg$a_plus,
+  b_minus = df_longg$b_minus,
+  b_plus = df_longg$b_plus,
+  # incubation = 0,
+  upper_bound = as.numeric(max(data.all$date) - mindate), # to account for truncation
+  incl_cov = 2, # 1 = overall (no covariate), 2 = include two-level covariate
+  sexual = ifelse(df_longg$sexual1 == 2, 0, 1) # 1 = sexual, 0 = non-sexual
+  # sexual = ifelse(df_longg$agecat == 3, 0, 1) # 0 = child, 1 = adult
+)
+
+mod_estIncub <- rstan::stan_model('./Final code/stan_incub_ward.stan', model_name = 'mod_estIncub')
+save(mod_estIncub, file = 'mod_est_incub.RData')
+
+load('./mod_est_incub.RData')
+
+nrchains = 4
+options(mc.cores=parallel::detectCores())
+fit_Weibull <- rstan::sampling(mod_estIncub, data = (data_stan), 
+                               verbose = TRUE,
+                               chains = 4, iter = 10000)
+
+## Results
+rstan::traceplot(fit_Weibull, pars = c("mean_","alpha"), inc_warmup = TRUE)
+quantile(as.matrix(fit_Weibull)[,'mean_[2]'], probs = c(0.025,0.5,0.975)) # mean sexual
+quantile(as.matrix(fit_Weibull)[,'sd_[2]'], probs = c(0.025,0.5,0.975)) # mean sexual
+quantile(as.matrix(fit_Weibull)[,'mean_[1]'], probs = c(0.025,0.5,0.975)) # mean non-sexual
+quantile(as.matrix(fit_Weibull)[,'sd_[1]'], probs = c(0.025,0.5,0.975)) # mean non-sexual
+
+
+##-------------------------------------------------------------------------------
+## Regression model
 
 data_stan <- list(
   N = nrow(df_longg),
@@ -229,41 +263,21 @@ table(data_stan$sexual)
 table(data_stan$age)
 table(data_stan$kamituga)
 
-# mod_Weibull_reg <- rstan::stan_model('./stan_incub_reg.stan', model_name = 'mod_Weibull_reg')
+# mod_Weibull_reg <- rstan::stan_model('./Final code/stan_incub_reg.stan', model_name = 'mod_Weibull_reg')
 # save(mod_Weibull_reg, file = 'mod_Weibull_reg.RData')
 
-table(df_longg$type) # 1 = single exposure
+# table(df_longg$type) # 1 = single exposure
 
-# load('mod_Weibull.RData')
-# load('mod_Weibull_noTrunc.RData')
-# load('mod_Weibull_prob.RData')
 load('./mod_Weibull_reg.RData')
 
-# initf <- function(chain_id = 1){
-#   meaninit = rep(5, data_stan$incl_cov)
-#   alphainit = rep(1, data_stan$incl_cov)
-#   dim(meaninit) = data_stan$incl_cov
-#   dim(alphainit) = data_stan$incl_cov
-#   
-#   list(mean_ = meaninit,
-#        alpha = alphainit
-#   )
-# }
 nrchains = 4
-# init_ll <- lapply(1:nrchains, function(id) initf(chain_id = id))
-
 options(mc.cores=parallel::detectCores())
 fit_Weibull <- rstan::sampling(mod_Weibull_reg, data = (data_stan), 
-                               # init = init_ll,
-                               # init = '0',
-                               # init_r = 10,
                                verbose = TRUE,
                                chains = 4, iter = 10000)
 # rstan::pairs.stanfit(fit_Weibull)
 
 ## Results
-
-### Regression model
 rstan::traceplot(fit_Weibull, pars = c("theta[1]","theta[2]","theta[3]","alpha"), inc_warmup = TRUE)
 quantile(as.matrix(fit_Weibull)[,'theta[1]'], probs = c(0.025,0.5,0.975)) # intercept
 quantile(as.matrix(fit_Weibull)[,'theta[2]'], probs = c(0.025,0.5,0.975)) # sexual
@@ -308,61 +322,61 @@ ggplot(df, aes(x = incubation)) +
 #        x = "Days", y = "Density") +
 #   theme_minimal()
 
-# hist(as.matrix(fit_Weibull)[,'limit_val_[1]']); summary(as.matrix(fit_Weibull)[,'limit_val_[1]'])
-library(posterior)
-?rhat
-rhat(fit_Weibull)
+# # hist(as.matrix(fit_Weibull)[,'limit_val_[1]']); summary(as.matrix(fit_Weibull)[,'limit_val_[1]'])
+# library(posterior)
+# ?rhat
+# rhat(fit_Weibull)
 
-###---------------------------------------------------------------------------------------
-### EpiLPS semi-parametric estimation
-
-library(EpiLPS)
-# ?estimIncub
-# https://statsandr.com/blog/epilps-for-estimation-of-incubation-times/
-# Model computes a semi-parametric fit to the data and compares it with classic parametric fits (lognormal, weibull, gamma)
-# candidate with the lowest BIC is selected
-
-mindate <- min(as.Date(df_long$lastcontact)) - 60
-# df_long$a_minus <- ifelse(df_long$type == 2, as.numeric(as.Date(df_long$symptom.onset) - mindate - 25),
-#                           as.numeric(as.Date(df_long$lastcontact) - mindate))
-# df_long$a_plus <- ifelse(df_long$type == 2, as.numeric(as.Date(df_long$lastcontact) - mindate + 1),
-#                          as.numeric(as.Date(df_long$lastcontact) - mindate + 1))
-# df_long$b_minus <- as.numeric(as.Date(df_long$symptom.onset) - mindate)
-# df_long$b_plus <- as.numeric(as.Date(df_long$symptom.onset) - mindate + 1)
-
-data.epi <- df_longg # excluded cases with upper < lower bound
-data.epi$symptom.onset.num <- as.numeric(as.Date(data.epi$symptom.onset) - mindate); summary(data.epi$symptom.onset.num)
-data.epi$lastcontact.num <- as.numeric(as.Date(data.epi$lastcontact) - mindate); summary(data.epi$lastcontact.num)
-# data.epi$exposure.upper.num <- as.numeric(as.Date(data.epi$lastcontact) - mindate); summary(data.epi$exposure.upper.num)
-# data.epi$exposure.lower.num <- ifelse(df_longg$type == 2, as.numeric(as.Date(data.epi$symptom.onset)-mindate-21),
-#                                       as.numeric(as.Date(data.epi$lastcontact)-mindate))
-data.epi$exposure.lower.num <- data.epi$a_minus
-data.epi$exposure.upper.num <- data.epi$a_plus #- 1 # because EpiLPS inherently accounts for censoring
-summary(as.numeric(data.epi$exposure.upper.num - data.epi$exposure.lower.num))
-summary(data.epi$a_plus - data.epi$a_minus)
-
-# incubation period window
-data.epi$tL <- data.epi$symptom.onset.num - data.epi$exposure.upper.num
+# ###---------------------------------------------------------------------------------------
+# ### EpiLPS semi-parametric estimation
+# 
+# library(EpiLPS)
+# # ?estimIncub
+# # https://statsandr.com/blog/epilps-for-estimation-of-incubation-times/
+# # Model computes a semi-parametric fit to the data and compares it with classic parametric fits (lognormal, weibull, gamma)
+# # candidate with the lowest BIC is selected
+# 
+# mindate <- min(as.Date(df_long$lastcontact)) - 60
+# # df_long$a_minus <- ifelse(df_long$type == 2, as.numeric(as.Date(df_long$symptom.onset) - mindate - 25),
+# #                           as.numeric(as.Date(df_long$lastcontact) - mindate))
+# # df_long$a_plus <- ifelse(df_long$type == 2, as.numeric(as.Date(df_long$lastcontact) - mindate + 1),
+# #                          as.numeric(as.Date(df_long$lastcontact) - mindate + 1))
+# # df_long$b_minus <- as.numeric(as.Date(df_long$symptom.onset) - mindate)
+# # df_long$b_plus <- as.numeric(as.Date(df_long$symptom.onset) - mindate + 1)
+# 
+# data.epi <- df_longg # excluded cases with upper < lower bound
+# data.epi$symptom.onset.num <- as.numeric(as.Date(data.epi$symptom.onset) - mindate); summary(data.epi$symptom.onset.num)
+# data.epi$lastcontact.num <- as.numeric(as.Date(data.epi$lastcontact) - mindate); summary(data.epi$lastcontact.num)
+# # data.epi$exposure.upper.num <- as.numeric(as.Date(data.epi$lastcontact) - mindate); summary(data.epi$exposure.upper.num)
+# # data.epi$exposure.lower.num <- ifelse(df_longg$type == 2, as.numeric(as.Date(data.epi$symptom.onset)-mindate-21),
+# #                                       as.numeric(as.Date(data.epi$lastcontact)-mindate))
+# data.epi$exposure.lower.num <- data.epi$a_minus
+# data.epi$exposure.upper.num <- data.epi$a_plus #- 1 # because EpiLPS inherently accounts for censoring
+# summary(as.numeric(data.epi$exposure.upper.num - data.epi$exposure.lower.num))
+# summary(data.epi$a_plus - data.epi$a_minus)
+# 
+# # incubation period window
+# data.epi$tL <- data.epi$symptom.onset.num - data.epi$exposure.upper.num
+# # data.epi$tR <- data.epi$symptom.onset.num - data.epi$exposure.lower.num + 1
 # data.epi$tR <- data.epi$symptom.onset.num - data.epi$exposure.lower.num + 1
-data.epi$tR <- data.epi$symptom.onset.num - data.epi$exposure.lower.num + 1
-data.epi$duration <- (data.epi$tR - data.epi$tL)
-hist(data.epi$duration)
-summary(data.epi$duration)
-
-data.epi$tL <- ifelse(data.epi$tL == -1, 0, data.epi$tL)
-
-# data.epi <- data.epi[!is.na(data.epi$sexual), ]
-data.epi <- data.epi[data.epi$duration > 5, ]
-
-dataIncub <- data.frame(tL = data.epi$tL, tR = data.epi$tR, sexual = data.epi$sexual)
-head(dataIncub); dim(dataIncub)
-summary(dataIncub$tR - dataIncub$tL)
-
-set.seed(222)
-# out <- estimIncub(dataIncub[dataIncub$sexual == 2, c(1:2)], verbose = TRUE)
-out <- estimIncub(dataIncub[,c(1:2)], K = 10, verbose = TRUE)
-gridExtra::grid.arrange(plot(out, typ = 'incubwin'), plot(out, type = "pdf"), nrow = 1)
-out$stats
-library(ggplot2)
-library(gridExtra)
-grid.arrange(plot(out, typ = "incubwin"), plot(out, type = "pdf"), nrow = 1)
+# data.epi$duration <- (data.epi$tR - data.epi$tL)
+# hist(data.epi$duration)
+# summary(data.epi$duration)
+# 
+# data.epi$tL <- ifelse(data.epi$tL == -1, 0, data.epi$tL)
+# 
+# # data.epi <- data.epi[!is.na(data.epi$sexual), ]
+# # data.epi <- data.epi[data.epi$duration > 5, ]
+# 
+# dataIncub <- data.frame(tL = data.epi$tL, tR = data.epi$tR, sexual = data.epi$sexual)
+# head(dataIncub); dim(dataIncub)
+# summary(dataIncub$tR - dataIncub$tL)
+# 
+# set.seed(222)
+# # out <- estimIncub(dataIncub[dataIncub$sexual == 2, c(1:2)], verbose = TRUE)
+# out <- estimIncub(dataIncub[,c(1:2)], K = 10, verbose = TRUE)
+# gridExtra::grid.arrange(plot(out, typ = 'incubwin'), plot(out, type = "pdf"), nrow = 1)
+# out$stats
+# library(ggplot2)
+# library(gridExtra)
+# grid.arrange(plot(out, typ = "incubwin"), plot(out, type = "pdf"), nrow = 1)
