@@ -293,7 +293,7 @@ tree <- cbind(Infector, Infectee, HH, Sexual)
 tree <- tree[which(Infector != 0), ]
 library(igraph)
 g <- graph_from_edgelist(tree[,c(1,2)])
-source('code/old/01_baseline/functions/fun_network.R')
+source('./fun_network.R')
 length(FindCycles(g)) == 0
 
 edge.mat <- tree

@@ -86,36 +86,38 @@ df_long <- df_long[!is.na(df_long$lastcontact), ]
 length(unique(df_long$ID2))
 dim(df_long)
 
-## Raw incubation periods
-raw_incubation_periods <- df_long %>%
-  pivot_longer(cols = c('symptom.onset', 'rash_onset'),
-               names_to = 'to_what',
-               values_to = 'to_date') %>%
-  mutate(to_date = as.Date(to_date)) %>%
-  pivot_longer(cols = c('lastcontact'),
-               names_to = "from_what",
-               values_to = 'from_date') %>%
-  mutate(time_diff = difftime(to_date, from_date, units = 'days') %>% as.numeric()) 
-raw_incubation_periods <- raw_incubation_periods[raw_incubation_periods$time_diff >= 0, ]
-library(ggplot2)
-raw_incubation_periods %>%
-  ggplot(aes(x = time_diff, fill = sexual)) +
-  geom_histogram() +
-  facet_grid(~to_what) +
-  # ggthemes::scale_fill_few("Dark") +
-  theme_bw() +
-  labs(x = 'time difference (days)', title = 'Distribution of times from last contact to symptom/rash onset')
-summary(raw_incubation_periods$time_diff)
+table(df_long$num_contact_mpox)
 
-data %>%
-  mutate(time_diff = difftime(rash_onset, symptom.onset, units = 'days') %>%
-           as.numeric()) %>%
-  ggplot(aes(x = time_diff, fill = as.factor(agecat))) +
-  geom_histogram() +
-  facet_wrap(~transm_sexual) +
-  # ggthemes::scale_fill_few('Dark') +
-  theme_bw() +
-  labs(x = 'time (days) between symptom and rash onset')
+# ## Raw incubation periods
+# raw_incubation_periods <- df_long %>%
+#   pivot_longer(cols = c('symptom.onset', 'rash_onset'),
+#                names_to = 'to_what',
+#                values_to = 'to_date') %>%
+#   mutate(to_date = as.Date(to_date)) %>%
+#   pivot_longer(cols = c('lastcontact'),
+#                names_to = "from_what",
+#                values_to = 'from_date') %>%
+#   mutate(time_diff = difftime(to_date, from_date, units = 'days') %>% as.numeric()) 
+# raw_incubation_periods <- raw_incubation_periods[raw_incubation_periods$time_diff >= 0, ]
+# library(ggplot2)
+# raw_incubation_periods %>%
+#   ggplot(aes(x = time_diff, fill = sexual)) +
+#   geom_histogram() +
+#   facet_grid(~to_what) +
+#   # ggthemes::scale_fill_few("Dark") +
+#   theme_bw() +
+#   labs(x = 'time difference (days)', title = 'Distribution of times from last contact to symptom/rash onset')
+# summary(raw_incubation_periods$time_diff)
+# 
+# data %>%
+#   mutate(time_diff = difftime(rash_onset, symptom.onset, units = 'days') %>%
+#            as.numeric()) %>%
+#   ggplot(aes(x = time_diff, fill = as.factor(agecat))) +
+#   geom_histogram() +
+#   facet_wrap(~transm_sexual) +
+#   # ggthemes::scale_fill_few('Dark') +
+#   theme_bw() +
+#   labs(x = 'time (days) between symptom and rash onset')
 
 ###------------------------------------------------------------
 ### Data for Stan model
@@ -124,11 +126,9 @@ df_long <- df_long[df_long$symptom.onset >= df_long$lastcontact, ]
 dim(df_long); length(unique(df_long$ID2))
 sum(df_long$rash_onset >= df_long$lastcontact, na.rm = T)
 
-df.unique <- df_long %>%
-  distinct(ID2, .keep_all = TRUE)
-summary(as.numeric(df.unique$rash_onset - df.unique$symptom.onset, na.rm = T))
-
-# df_long <- df_long[df_long$contact_num == 'contact1', ]
+# df.unique <- df_long %>%
+#   distinct(ID2, .keep_all = TRUE)
+# summary(as.numeric(df.unique$rash_onset - df.unique$symptom.onset, na.rm = T))
 
 # 114 individuals that report only one contact
 df_long <- df_long[df_long$num_contact_mpox == 1, ]
@@ -138,7 +138,7 @@ table(df_long$contact_num)
 table(df_long$ID_code)
 sum(is.na(df_long$ID_code))
 
-table(df_long$type)
+table(df_long$type) # 1 = single exposure, 2 = multiple/ongoing exposure
 
 # # Individuals with only single exposure
 # table(df_long$type)
