@@ -18,7 +18,7 @@ summary(ct_pos$Ct.value)
 hist(ct_pos$Ct.value)
 
 par(mfrow=c(2,1))
-hist(ct_pos$Ct.value[ct_pos$site == 'Kamituga'], breaks = 20, main = '', xlab = 'Clade Ib-specific Ct (Kamituga)')
+hist(ct_pos$Ct.value[ct_pos$site == 'Kamituga'], breaks = 20, main = '', xlab = 'OPX Ct (Kamituga)')
 hist(ct_pos$Ct.value[ct_pos$site == 'Goma'], breaks = 20, main = '', xlab = 'OPX Ct (Goma)')
 
 ###-----------------------------------------------------------------
@@ -52,6 +52,7 @@ sum(ct_pos$rashOnset.to.sample <= 3, na.rm = T)
 aggregate(ct_pos$Ct.value[ct_pos$agecat == 1 & ct_pos$rashOnset.to.sample <= 3], 
           by = list(ct_pos$transm_sexual[ct_pos$agecat == 1 & ct_pos$rashOnset.to.sample <= 3]), mean)
 
+library(ggplot2)
 ggplot(ct_pos[ct_pos$rashOnset.to.sample<=3, ], aes(x = factor(agecat), y = Ct.value, fill = factor(transm_sexual))) +
   geom_boxplot() +
   xlab('Age group (1 = adults, 2 = 12-17y, 3 = <12y)') + ylab('Ct value') + labs(fill = 'Sexual')
@@ -83,16 +84,31 @@ ct_pos$date.breaks <- factor(ct_pos$date.breaks,
 ggplot(ct_pos[!is.na(ct_pos$date.breaks), ], aes(x = factor(agecat), y = Ct.value, fill = factor(transm_sexual))) +
   facet_wrap(site~date.breaks, nrow = 2) +
   geom_boxplot() +
-  xlab('Age group (1 = adults, 2 = 12-17y, 3 = <12y)') + ylab('Ct value') + labs(fill = 'Sexual') +
-  theme(legend.position = 'bottom')
-ggsave('./results/Ct_groups_rash.jpeg', width = 30, height = 20, units = 'cm')
+  # xlab('Age group (1 = adults, 2 = 12-17y, 3 = <12y)') + 
+  xlab('Age group') +
+  ylab('OPX Ct value') + 
+  # labs(fill = 'Sexual') +
+  labs(fill = 'Transmission mode') +
+  scale_x_discrete(labels = c('1'='Adults', '2'='12-17y', '3'='<12y')) +
+  scale_fill_discrete(labels = c('0' = 'Non-sexual', '1'='Sexual')) +
+  theme(legend.position = 'bottom',
+        legend.text = element_text(size = 18),
+        legend.title = element_text(size = 18),
+        axis.text = element_text(size = 16),
+        axis.title = element_text(size = 18),
+        strip.text.x = element_text(size = 18)
+        )
+ggsave('./Final code/results/FigureS2.jpeg', width = 35, height = 20, units = 'cm')
 
 ###---------------------------------------------------------------------------------
 ### Cases included in serial interval estimation
 
 ct_ids <- ct_pos[grepl('SCREEN', ct_pos$isac), ]
 ct_ids$IDnum <- as.numeric(unlist(regmatches(ct_ids$isac, gregexpr("[0-9]+", ct_ids$isac))))
-load('data_obs_SI.RData')
+load('./Final code/data/data_obs_SI.RData')
+# remove duplicate
+data.si <- data.si[-which(data.si$ID==839)[1], ]
+dim(data.si)
 
 sum(ct_ids$IDnum %in% unique(data.si$ID))
 sum(!(ct_ids$IDnum %in% unique(data.si$ID)))

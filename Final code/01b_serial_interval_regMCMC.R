@@ -3,7 +3,7 @@
 
 # https://medium.com/@tinonucera/bayesian-linear-regression-from-scratch-a-metropolis-hastings-implementation-63526857f191
 
-setwd('./Final_code')
+setwd('./Final code')
 
 load('data/contact_data_100325.RData')
 data <- data.contact.clean
@@ -179,20 +179,34 @@ colnames(chain1) = c("Intercept", "b.sexual", "b.age", "b.household", "sigma")#,
 # colnames(chain1) = c("Intercept", "b.sexual",  "b.household", "sigma")#, "b.hh.sexual")
 autocorr.plot(chain1[,c(1:4)]) # see if thinning has to be increased
 # jpeg('results/baseline/plotConvergenceReg.jpeg', width = 30, height = 30, units = 'cm', res = 300)
-par(mfrow = c(5, 2))
-plot(chain1[,c(1:4)])
+# par(mfrow = c(5, 2))
+# plot(chain1[,c(1:4)])
 # dev.off()
 summary(chain1); sumstats <- summary(chain1)
 
-jpeg('./results/convergence_SI_sens.jpeg', width = 40, height = 30, units = 'cm', res = 300)
-par(mfrow = c(3, 2))
-plot(out$parms[,1], type = 'l', ylab = 'Intercept')
-plot(out$parms[,2], type = 'l', ylab = 'Sexual')
-plot(out$parms[,3], type = 'l', ylab = 'Age')
-plot(out$parms[,4], type = 'l', ylab = 'Household')
-# plot(out$parms[,3], type = 'l', ylab = 'HH x Sexual')
-plot(out$parms[,5], type = 'l', ylab = 'Sigma')
+# jpeg('./Final code/results/FigureS3.jpeg', width = 40, height = 30, units = 'cm', res = 300)
+# par(mfrow = c(3, 2))
+# plot(out$parms[,1], type = 'l', ylab = 'Intercept')
+# plot(out$parms[,2], type = 'l', ylab = 'Sexual')
+# plot(out$parms[,3], type = 'l', ylab = 'Age')
+# plot(out$parms[,4], type = 'l', ylab = 'Household')
+# # plot(out$parms[,3], type = 'l', ylab = 'HH x Sexual')
+# plot(out$parms[,5], type = 'l', ylab = 'Sigma')
 dev.off()
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+param_df <- as.data.frame(out$parms)
+colnames(param_df) <- c("Intercept","Sexual","Age","Household","sigma")
+param_df_long <- param_df %>%
+  mutate(Iteration = row_number()) %>%
+  pivot_longer(-Iteration, names_to = "Parameter", values_to = "Value")
+ggplot(param_df_long, aes(x = Iteration, y = Value)) +
+  geom_line() +
+  facet_wrap(~Parameter, scales = 'free_y', ncol = 2) +
+  theme_minimal(base_size = 18) +
+  ylab("Parameter value") + xlab("Iteration")
+ggsave('./results/FigureS3.jpeg', width = 30, height = 20, units = 'cm', dpi = 300)
 
 par(mfrow=c(2,1))
 plot(out$log_post[seq(1, (nrun-(burnin*nrun))/thin)], type="l", ylab="Posterior")

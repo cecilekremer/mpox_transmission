@@ -148,6 +148,8 @@ table(df_long$type) # 1 = single exposure, 2 = multiple/ongoing exposure
 # df_long <- df_long[df_long$type == 1, ]
 table(df_long$sexual) # 1 = yes, 2 = no
 
+table(df_long$included) # 1 = contact included in study
+
 # Scenario 1: set to sexual if missing and hypothesis is sexual (if not family)
 # Scenario 2: set to non-sexual if missing
 # Scenario 3: set to sexual if anal/genital lesions present (if not family)
@@ -161,11 +163,6 @@ for(i in 1:dim(df_long)[1]){
       df_long$sexual2[i] <- 2
       df_long$sexual3[i] <- 2
     }else{
-      # if(!is.na(df_long$transm_sexual[i]) & df_long$transm_sexual[i] == 1){
-      #   df_long$sexual2[i] <- 1 # otherwise sexual if this is the most likely hypothesis
-      # }else{
-      #   df_long$sexual2[i] <- 2
-      # }
       df_long$sexual1[i] <- 1 # sexual if missing and not family
       df_long$sexual2[i] <- 2 # non-sexual if missing
       if(!is.na(df_long$anal.lesion[i]) | !is.na(df_long$genital.lesion[i])){
@@ -222,8 +219,8 @@ data_stan <- list(
   # sexual = ifelse(df_longg$agecat == 3, 0, 1) # 0 = child, 1 = adult
 )
 
-mod_estIncub <- rstan::stan_model('./Final code/stan_incub_ward.stan', model_name = 'mod_estIncub')
-save(mod_estIncub, file = 'mod_est_incub.RData')
+# mod_estIncub <- rstan::stan_model('./Final code/stan_incub_ward.stan', model_name = 'mod_estIncub')
+# save(mod_estIncub, file = 'mod_est_incub.RData')
 
 load('./mod_est_incub.RData')
 
@@ -241,8 +238,11 @@ quantile(as.matrix(fit_Weibull)[,'mean_[1]'], probs = c(0.025,0.5,0.975)) # mean
 quantile(as.matrix(fit_Weibull)[,'sd_[1]'], probs = c(0.025,0.5,0.975)) # mean non-sexual
 
 
+
 ##-------------------------------------------------------------------------------
-## Regression model
+## Bayesian regression model
+
+df_longg$agecat2 <- ifelse(df_longg$agenum < 15, 0, 1) # 0 = child, 1 = adult
 
 data_stan <- list(
   N = nrow(df_longg),
@@ -254,7 +254,8 @@ data_stan <- list(
   upper_bound = as.numeric(max(data.all$date) - mindate), # to account for truncation
   sexual = ifelse(df_longg$sexual1 == 2, 0, 1),
   # age = df_longg$agenum,
-  age = ifelse(df_longg$agecat == 3, 0, 1), # 0 = child, 1 = adult
+  # age = ifelse(df_longg$agecat == 3, 0, 1), # 0 = child, 1 = adult
+  age = df_longg$agecat2, # child cutoff at 15y
   # kamituga = ifelse(is.na(df_longg$ID_code), 1, 0),
   kamituga = rep(0, nrow(df_longg)),
   n_steps_prior = df_longg$a_plus - df_longg$a_minus

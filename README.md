@@ -4,6 +4,7 @@ To install R, we refer to https://cran.r-project.org/doc/manuals/r-release/R-adm
 
 # R code
 The following R scripts are included in this repository:
+* 00_descriptives: descriptive analyses of combined data (Goma + Kamituga)
 * 01a_serial_interval_observed.R: to obtain parameter estimates for the observed serial intervals
 * 01b_serial_interval_regMCMC.R: to estimate parameters of the Bayesian linear regression model for the serial interval
 * fun_reg_si.R: function to perform MCMC for the regression model
