@@ -12,7 +12,8 @@ summary(data.all$agenum)
 # hist(data.all$agenum, xlab = 'Age (years)', ylab = 'Number of participants', main = '', breaks = 80)
 library(ggplot2)
 ggplot(data = data.all, aes(x = agenum)) +
-  geom_histogram(binwidth = 1, fill = 'steelblue', color = 'white', alpha = 0.7) +
+  geom_histogram(aes(y = ..density..), binwidth = 1, fill = 'steelblue', color = 'white', alpha = 0.7) +
+  geom_density(size=2, color='red') +
   # geom_density(color = 'darkred', size = 1) + # only if usiing geom_histogram(aes(y = ...density...))
   scale_x_continuous(breaks = c(0,5,12,18,30,40,50,60,70,80)) +
   geom_vline(xintercept = c(12, 18), color = 'red', linetype = "dashed", size = 1) +

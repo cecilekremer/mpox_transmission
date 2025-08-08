@@ -215,8 +215,9 @@ data_stan <- list(
   # incubation = 0,
   upper_bound = as.numeric(max(data.all$date) - mindate), # to account for truncation
   incl_cov = 2, # 1 = overall (no covariate), 2 = include two-level covariate
-  sexual = ifelse(df_longg$sexual1 == 2, 0, 1) # 1 = sexual, 0 = non-sexual
+  # sexual = ifelse(df_longg$sexual1 == 2, 0, 1) # 1 = sexual, 0 = non-sexual
   # sexual = ifelse(df_longg$agecat == 3, 0, 1) # 0 = child, 1 = adult
+  sexual = ifelse(df_longg$agenum < 15, 0, 1)
 )
 
 # mod_estIncub <- rstan::stan_model('./Final code/stan_incub_ward.stan', model_name = 'mod_estIncub')

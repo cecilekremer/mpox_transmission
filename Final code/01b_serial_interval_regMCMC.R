@@ -164,8 +164,12 @@ out <- estimate_si_reg(case.ids = data.si$ID,
 )
 
 # load('./results/SerialIntervalReg_Sex_HH_020425.RData')
-load('./results/SerialIntervalReg_age_HH_280325.RData')
 # load('./results/SerialIntervalReg_age_HH_310325.RData') # with HH x sexual interaction
+
+## Final result in manuscript (model incl. sexual, age group, and HH status)
+load('./results/SerialIntervalReg_age_HH_280325.RData')
+# ## Alternative model with age cutoff at 15y
+# load('./results/SerialIntervalReg_Sex_HH_age_280725.RData')
 
 length(unique(out$networkIDs))
 
@@ -389,16 +393,16 @@ apply(mean.trans.mat,2,sum) # should sum to 1
 
 library(plot.matrix)
 library(RColorBrewer)
-jpeg("results/agemat.jpeg", width=10, height=10, units="cm", res=300)
-# par(mar=c(5.1, 4.1, 4.1, 4.1))
-plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPalette(brewer.pal(5, "GnBu")),
-     fmt.key="%.0f", border=NA, asp=T, cex.axis=0.7, 
-     axis.col=list(side=1, las=2), 
-     axis.row=list(side=2, las=2),
-     fmt.cell="%.2f", text.cell=list(cex=0.5), key=NULL,#  key=list(tick=F, at=c(0,2,4,6), labels=c(0,2,4,6)), 
-     breaks=seq(0,1,0.1)
-)
-dev.off()
+# jpeg("results/agemat.jpeg", width=10, height=10, units="cm", res=300)
+# # par(mar=c(5.1, 4.1, 4.1, 4.1))
+# plot(mean.trans.mat, xlab="Source case", ylab="Case", main="", col=colorRampPalette(brewer.pal(5, "GnBu")),
+#      fmt.key="%.0f", border=NA, asp=T, cex.axis=0.7, 
+#      axis.col=list(side=1, las=2), 
+#      axis.row=list(side=2, las=2),
+#      fmt.cell="%.2f", text.cell=list(cex=0.5), key=NULL,#  key=list(tick=F, at=c(0,2,4,6), labels=c(0,2,4,6)), 
+#      breaks=seq(0,1,0.1)
+# )
+# dev.off()
 
 ## Transmission pair characteristics
 edgedat <- as.data.frame(edge.mat)
@@ -421,14 +425,22 @@ edge.mat[,3] <- ifelse(edge.mat[,3] == 1, 1, 2) # 1 = HH
 edge.mat[,4] <- ifelse(edge.mat[,4] == 1, 1, 2) # 1 = Sexual
 vertex.mat$gender <- ifelse(data.si$gender == 1, 1, 2) # 1 = male
 
+edge.mat <- cbind(edge.mat, rep(NA, dim(edge.mat)[1]))
+edge.mat[,5] <- ifelse(edge.mat[,3] == 1 & edge.mat[,4] == 2, '1', # HH non-sexual
+                             ifelse(edge.mat[,3] == 1 & edge.mat[,4] == 1, 2, # HH sexual
+                                    ifelse(edge.mat[,3] == 2 & edge.mat[,4] == 1, 3, # non-HH sexual
+                                           ifelse(edge.mat[,3] == 2 & edge.mat[,4] == 2, 4, NA)))) # non-HH non-sexual
+colnames(edge.mat)[5] <- "HH_sexual"
+edge.mat[,5] <- as.numeric(edge.mat[,5])
+
 net <- graph.data.frame(edge.mat, vertex.mat, directed = T)
 
 library(extrafont)
 library(RColorBrewer)
 colr2 <- c("#B569DB", "#2A9832", "#F39110")
 V(net)$color <- colr2[V(net)$age]
-edge.col <- c("red","black")
-E(net)$color <- edge.col[E(net)$Sexual]
+edge.col <- c("red","black","green","blue")
+E(net)$color <- edge.col[as.numeric(E(net)$HH_sexual)]
 # v.shape <- c('csquare', 'crectangle', 'square', 'rectangle')
 v.shape <- c('circle', 'square')
 # v.shape.occ <- c('filled square', 'filled circle', NA)
@@ -436,25 +448,25 @@ v.shape <- c('circle', 'square')
 V(net)$shape <- v.shape[V(net)$gender]
 v.size <- c(5,5,3,3)
 V(net)$size <- v.size[V(net)$gender.occupation]
-edge.lty <- c(2,1)
-E(net)$lty <- edge.lty[E(net)$HH]
+# edge.lty <- c(2,1)
+# E(net)$lty <- edge.lty[E(net)$HH]
 
-jpeg('results/Figure1.jpeg', width = 180, height = 180, units = 'cm', res = 300)
+jpeg('results/Figure1_revised.jpeg', width = 180, height = 180, units = 'cm', res = 300)
 # par(mar = c(5,5,5,15))
 layout(matrix(c(2,1), nrow = 2), heights = c(5, 20))
 # net.layout <- layout_with_kk(net)
 plot(net, 
      # layout = net.layout, 
-     vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, edge.lty = E(net)$lty,
+     vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, #edge.lty = E(net)$lty,
      vertex.label = '', layout=layout.fruchterman.reingold,
-     vertex.label.cex = 2, edge.arrow.size = 2, edge.width = 3)
+     vertex.label.cex = 2, edge.arrow.size = 1.5, edge.width = 3)
 plot.new()
-legend('top', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other", "sexual", "household"),
-       col = c("#B569DB", "#2A9832", "#F39110", rep('black', 4), "red", "darkgrey"),
-       lty = c(rep(NA, 7), 1,2),
-       pch = c(rep(19, 3), 19,19, 15,15, NA,NA),
-       pt.cex = c(10,10,10,15,10,15,10,NA,NA),
-       lwd = c(rep(NA,7), 10, 10),
+legend('top', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other", "HH non-sexual", "HH sexual", "non-HH sexual","non-HH non-sexual"),
+       col = c("#B569DB", "#2A9832", "#F39110", rep('black', 4), "red","black","green","blue"),
+       lty = c(rep(NA, 7), 1,1,1,1),
+       pch = c(rep(19, 3), 19,19, 15,15, NA,NA,NA,NA),
+       pt.cex = c(10,10,10,15,10,15,10,NA,NA,NA,NA),
+       lwd = c(rep(NA,7), 10, 10,10,10),
        cex = 9, ncol = 3,
        # inset = c(-0.4, 0), xpd = NA,
        y.intersp = 1, x.intersp = 3)
@@ -462,7 +474,7 @@ dev.off()
 
 jpeg('results/plotNetworkNoLegend.jpeg', width = 180, height = 180, units = 'cm', res = 300)
 par(mfrow = c(1,1))
-plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, edge.lty = E(net)$lty,
+plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, #edge.lty = E(net)$lty,
      vertex.label = '', layout=layout.fruchterman.reingold,
      vertex.label.cex = 1.2, edge.arrow.size = 1)
 dev.off()   
