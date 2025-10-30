@@ -3,9 +3,9 @@
 
 # https://medium.com/@tinonucera/bayesian-linear-regression-from-scratch-a-metropolis-hastings-implementation-63526857f191
 
-setwd('./Final code')
+# setwd('./Final code')
 
-load('data/contact_data_100325.RData')
+load('./Final code/data/contact_data_all.RData')
 data <- data.contact.clean
 
 data.si <- data[data$contacts != '', ]
@@ -54,12 +54,12 @@ for(i in 1:NCases){
   
   ## Sexual transmission
   sextrans <- numeric()
-  # transmission routes: 1 = sexual, 2 = other (also if not specifically sexual reported) (data columns: 83,84,85,86)
+  # transmission routes: 1 = sexual, 2 = other (also if not specifically sexual reported) (data columns: 40,41,42,43)
   if(length(inf) > 0){
     for(c in 1:length(inf)){
       # sex <- ifelse(data.si[i, 82 + c] == 1 & !is.na(data.si[i, 82 + c]), 1, 2) # Scenario 2: NA = non-sexual
       # Scenario 1: NA = sexual if not family
-      sex <- ifelse((is.na(data.si[i, 82 + c]) & data.si[i, 58 + c] %in% c(1,2)) | data.si[i, 82 + c] == 2, 2, 1)
+      sex <- ifelse((is.na(data.si[i, 39 + c]) & data.si[i, 31 + c] %in% c(1,2)) | data.si[i, 39 + c] == 2, 2, 1)
       
       sextrans <- c(sextrans, sex)
     }
@@ -74,7 +74,7 @@ for(i in 1:NCases){
   # transmission routes: 1 = HH member, 2 = other (also if not specifically reported) (data columns: 59,60,61,62)
   if(length(inf) > 0){
     for(c in 1:length(inf)){
-      HH <- ifelse(data.si[i, 58 + c] == 1 & !is.na(data.si[i, 58 + c]), 1, 2)
+      HH <- ifelse(data.si[i, 31 + c] == 1 & !is.na(data.si[i, 31 + c]), 1, 2)
       HHtrans <- c(HHtrans, HH)
     }
   }
@@ -123,8 +123,8 @@ library(igraph)
 ## MCMC to estimate serial interval using normal distribution
 
 # Change network when changing min and max si !!!
-load('./results/trees_100325_base.RData')
-load('./results/onsets_100325_base.RData')
+load('./Final code/results/trees_100325_base.RData')
+load('./Final code/results/onsets_100325_base.RData')
 # load('code/serialinterval_final/routes_100325_base.RData')
 
 # # check if all networks are unique
@@ -143,7 +143,7 @@ trees[,1] <- 1:dim(trees)[1]
 onsets[,1] <- 1:dim(onsets)[1]
 # transroutes[,1] <- 1:dim(transroutes)[1]
 
-source('./fun_reg_si.R')
+source('./Final code/fun_reg_si.R')
 
 nrun <- 5000000
 burnin <- 0.4
@@ -167,7 +167,7 @@ out <- estimate_si_reg(case.ids = data.si$ID,
 # load('./results/SerialIntervalReg_age_HH_310325.RData') # with HH x sexual interaction
 
 ## Final result in manuscript (model incl. sexual, age group, and HH status)
-load('./results/SerialIntervalReg_age_HH_280325.RData')
+load('./Final code/results/SerialIntervalReg_age_HH_280325.RData')
 # ## Alternative model with age cutoff at 15y
 # load('./results/SerialIntervalReg_Sex_HH_age_280725.RData')
 
@@ -196,7 +196,7 @@ summary(chain1); sumstats <- summary(chain1)
 # plot(out$parms[,4], type = 'l', ylab = 'Household')
 # # plot(out$parms[,3], type = 'l', ylab = 'HH x Sexual')
 # plot(out$parms[,5], type = 'l', ylab = 'Sigma')
-dev.off()
+# dev.off()
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -210,7 +210,7 @@ ggplot(param_df_long, aes(x = Iteration, y = Value)) +
   facet_wrap(~Parameter, scales = 'free_y', ncol = 2) +
   theme_minimal(base_size = 18) +
   ylab("Parameter value") + xlab("Iteration")
-ggsave('./results/FigureS3.jpeg', width = 30, height = 20, units = 'cm', dpi = 300)
+# ggsave('./results/FigureS3.jpeg', width = 30, height = 20, units = 'cm', dpi = 300)
 
 par(mfrow=c(2,1))
 plot(out$log_post[seq(1, (nrun-(burnin*nrun))/thin)], type="l", ylab="Posterior")
@@ -276,13 +276,13 @@ for(i in 1:NCases){
     if(length(c) == 0){
       id.orig <- data.si$ID_orig[data.si$ID == i]
       c <- which(as.numeric(unlist(strsplit(data.si$contacts[inf.id], ","))) == id.orig)
-      hh.trans[i] <- ifelse(data.si[inf.id, 58 + c] == 1 & !is.na(data.si[inf.id, 58 + c]), 1, 0)
+      hh.trans[i] <- ifelse(data.si[inf.id, 31 + c] == 1 & !is.na(data.si[inf.id, 31 + c]), 1, 0)
       # sex.trans[i] <- ifelse(data.si[inf.id, 82 + c] == 1 & !is.na(data.si[inf.id, 82 + c]), 1, 0) # Scenario 2
-      sex.trans[i] <- ifelse((is.na(data.si[inf.id, 82 + c]) & data.si[inf.id, 58 + c] %in% c(1,2)) | (!is.na(data.si[inf.id, 82 + c]) & data.si[inf.id, 82 + c] == 2), 0, 1) # Scenario 1
+      sex.trans[i] <- ifelse((is.na(data.si[inf.id, 39 + c]) & data.si[inf.id, 31 + c] %in% c(1,2)) | (!is.na(data.si[inf.id, 39 + c]) & data.si[inf.id, 39 + c] == 2), 0, 1) # Scenario 1
     }else{
-      hh.trans[i] <- ifelse(data.si[i, 58 + c] == 1 & !is.na(data.si[i, 58 + c]), 1, 0)
+      hh.trans[i] <- ifelse(data.si[i, 31 + c] == 1 & !is.na(data.si[i, 31 + c]), 1, 0)
       # sex.trans[i] <- ifelse(data.si[i, 82 + c] == 1 & !is.na(data.si[i, 82 + c]), 1, 0) # Scenario 2
-      sex.trans[i] <- ifelse((is.na(data.si[i, 82 + c]) & data.si[i, 58 + c] %in% c(1,2)) | (!is.na(data.si[i, 82 + c]) & data.si[i, 82 + c] == 2), 0, 1) # Scenario 1
+      sex.trans[i] <- ifelse((is.na(data.si[i, 39 + c]) & data.si[i, 31 + c] %in% c(1,2)) | (!is.na(data.si[i, 39 + c]) & data.si[i, 39 + c] == 2), 0, 1) # Scenario 1
     }
   }
 }
@@ -311,7 +311,7 @@ tree <- cbind(Infector, Infectee, HH, Sexual)
 tree <- tree[which(Infector != 0), ]
 library(igraph)
 g <- graph_from_edgelist(tree[,c(1,2)])
-source('./fun_network.R')
+source('./Final code/fun_network.R')
 length(FindCycles(g)) == 0
 
 edge.mat <- tree
@@ -419,62 +419,122 @@ table(edgedat$HH, edgedat$Sexual)
 ##------------------------------------------------------------
 ## Plot network
 
-vertex.mat$age <- ifelse(data.si$agecat == 1, 1, 
-                         ifelse(data.si$agecat == 2, 2, 3)) # 1 = adult, 2 = 12-17, 3 = <12
-edge.mat[,3] <- ifelse(edge.mat[,3] == 1, 1, 2) # 1 = HH
-edge.mat[,4] <- ifelse(edge.mat[,4] == 1, 1, 2) # 1 = Sexual
-vertex.mat$gender <- ifelse(data.si$gender == 1, 1, 2) # 1 = male
+# vertex.mat$age <- ifelse(data.si$agecat == 1, 1, 
+#                          ifelse(data.si$agecat == 2, 2, 3)) # 1 = adult, 2 = 12-17, 3 = <12
+# edge.mat[,3] <- ifelse(edge.mat[,3] == 1, 1, 2) # 1 = HH
+# edge.mat[,4] <- ifelse(edge.mat[,4] == 1, 1, 2) # 1 = Sexual
+# vertex.mat$gender <- ifelse(data.si$gender == 1, 1, 2) # 1 = male
+# 
+# edge.mat <- cbind(edge.mat, rep(NA, dim(edge.mat)[1]))
+# edge.mat[,5] <- ifelse(edge.mat[,3] == 1 & edge.mat[,4] == 2, '1', # HH non-sexual
+#                              ifelse(edge.mat[,3] == 1 & edge.mat[,4] == 1, 2, # HH sexual
+#                                     ifelse(edge.mat[,3] == 2 & edge.mat[,4] == 1, 3, # non-HH sexual
+#                                            ifelse(edge.mat[,3] == 2 & edge.mat[,4] == 2, 4, NA)))) # non-HH non-sexual
+# colnames(edge.mat)[5] <- "HH_sexual"
+# edge.mat[,5] <- as.numeric(edge.mat[,5])
+# 
+# net <- graph.data.frame(edge.mat, vertex.mat, directed = T)
+# 
+# library(extrafont)
+# library(RColorBrewer)
+# colr2 <- c("#B569DB", "#2A9832", "#F39110")
+# V(net)$color <- colr2[V(net)$age]
+# edge.col <- c("red","black","green","blue")
+# E(net)$color <- edge.col[as.numeric(E(net)$HH_sexual)]
+# # v.shape <- c('csquare', 'crectangle', 'square', 'rectangle')
+# v.shape <- c('circle', 'square')
+# # v.shape.occ <- c('filled square', 'filled circle', NA)
+# # V(net)$shape <- v.shape[V(net)$gender.occupation]
+# V(net)$shape <- v.shape[V(net)$gender]
+# v.size <- c(5,5,3,3)
+# V(net)$size <- v.size[V(net)$gender.occupation]
+# # edge.lty <- c(2,1)
+# # E(net)$lty <- edge.lty[E(net)$HH]
+# 
+# # jpeg('results/Figure1_final.jpeg', width = 180, height = 180, units = 'cm', res = 300)
+# pdf('results/Figure1_final.pdf')#, res = 300)
+# # par(mar = c(5,5,5,15))
+# layout(matrix(c(2,1), nrow = 2), heights = c(5, 20))
+# # net.layout <- layout_with_kk(net)
+# plot(net, 
+#      # layout = net.layout, 
+#      vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, #edge.lty = E(net)$lty,
+#      vertex.label = '', layout=layout.fruchterman.reingold,
+#      vertex.label.cex = 2, edge.arrow.size = 1.5, edge.width = 3)
+# plot.new()
+# legend('top', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other", "HH non-sexual", "HH sexual", "non-HH sexual","non-HH non-sexual"),
+#        col = c("#B569DB", "#2A9832", "#F39110", rep('black', 4), "red","black","green","blue"),
+#        lty = c(rep(NA, 7), 1,1,1,1),
+#        pch = c(rep(19, 3), 19,19, 15,15, NA,NA,NA,NA),
+#        pt.cex = c(10,10,10,15,10,15,10,NA,NA,NA,NA),
+#        lwd = c(rep(NA,7), 10, 10,10,10),
+#        cex = 9, ncol = 3,
+#        # inset = c(-0.4, 0), xpd = NA,
+#        y.intersp = 1, x.intersp = 3)
+# dev.off()
+# 
+# jpeg('results/plotNetworkNoLegend.jpeg', width = 180, height = 180, units = 'cm', res = 300)
+# par(mfrow = c(1,1))
+# plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, #edge.lty = E(net)$lty,
+#      vertex.label = '', layout=layout.fruchterman.reingold,
+#      vertex.label.cex = 1.2, edge.arrow.size = 1)
+# dev.off()   
 
-edge.mat <- cbind(edge.mat, rep(NA, dim(edge.mat)[1]))
-edge.mat[,5] <- ifelse(edge.mat[,3] == 1 & edge.mat[,4] == 2, '1', # HH non-sexual
-                             ifelse(edge.mat[,3] == 1 & edge.mat[,4] == 1, 2, # HH sexual
-                                    ifelse(edge.mat[,3] == 2 & edge.mat[,4] == 1, 3, # non-HH sexual
-                                           ifelse(edge.mat[,3] == 2 & edge.mat[,4] == 2, 4, NA)))) # non-HH non-sexual
-colnames(edge.mat)[5] <- "HH_sexual"
-edge.mat[,5] <- as.numeric(edge.mat[,5])
+# ---------- FINAL FIGURE----------
+# convert cm to inches:
+cm2in <- function(x) x / 2.54
 
-net <- graph.data.frame(edge.mat, vertex.mat, directed = T)
+# Desired figure size in cm:
+fig_w_cm <- 18
+fig_h_cm <- 18
 
-library(extrafont)
-library(RColorBrewer)
-colr2 <- c("#B569DB", "#2A9832", "#F39110")
-V(net)$color <- colr2[V(net)$age]
-edge.col <- c("red","black","green","blue")
-E(net)$color <- edge.col[as.numeric(E(net)$HH_sexual)]
-# v.shape <- c('csquare', 'crectangle', 'square', 'rectangle')
-v.shape <- c('circle', 'square')
-# v.shape.occ <- c('filled square', 'filled circle', NA)
-# V(net)$shape <- v.shape[V(net)$gender.occupation]
-V(net)$shape <- v.shape[V(net)$gender]
-v.size <- c(5,5,3,3)
-V(net)$size <- v.size[V(net)$gender.occupation]
-# edge.lty <- c(2,1)
-# E(net)$lty <- edge.lty[E(net)$HH]
+# Use cairo_pdf to better embed fonts
+cairo_pdf("./Final code/results/Figure1_final.pdf",
+          width  = cm2in(fig_w_cm),
+          height = cm2in(fig_h_cm),
+          family = "sans")   # change to "Arial" if required
 
-jpeg('results/Figure1_revised.jpeg', width = 180, height = 180, units = 'cm', res = 300)
-# par(mar = c(5,5,5,15))
-layout(matrix(c(2,1), nrow = 2), heights = c(5, 20))
-# net.layout <- layout_with_kk(net)
-plot(net, 
-     # layout = net.layout, 
-     vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, #edge.lty = E(net)$lty,
-     vertex.label = '', layout=layout.fruchterman.reingold,
-     vertex.label.cex = 2, edge.arrow.size = 1.5, edge.width = 3)
+# Use layout: 2 rows (network big, legend small)
+# heights are relative: give network much more vertical space than the legend
+layout(matrix(c(1,2), nrow = 2, byrow = TRUE), heights = c(20, 5))
+
+## Panel 1: network plot
+# minimal margins for the network
+par(mar = c(0, 0, 0, 0))   # bottom, left, top, right (in lines)
+# fix the layout reproducibly if needed:
+set.seed(42)
+# If you have a precomputed layout, use it; otherwise:
+# net.layout <- layout_with_fr(net)  # or layout_fruchterman_reingold, layout_with_kk, etc.
+# plot:
+plot(net,
+     layout = layout.fruchterman.reingold,   # or net.layout
+     vertex.size = V(net)$size,
+     vertex.color = V(net)$color,
+     vertex.shape = V(net)$shape,
+     vertex.label = NA,        # no labels on main panel for clarity
+     edge.color = E(net)$color,
+     edge.width = ifelse(is.null(E(net)$width), 0.5, E(net)$width),
+     edge.arrow.size = 0.2)    # scale down arrow size for publication
+
+## Panel 2: legend panel
+# small margins but allow drawing anywhere inside panel
+par(mar = c(1, 0.5, 0, 0.5), xpd = NA)  # leave a little space
 plot.new()
-legend('top', c(">18y", "12-17y", "<12y", "male miner", "male other", "female sexworker", "female other", "HH non-sexual", "HH sexual", "non-HH sexual","non-HH non-sexual"),
-       col = c("#B569DB", "#2A9832", "#F39110", rep('black', 4), "red","black","green","blue"),
-       lty = c(rep(NA, 7), 1,1,1,1),
-       pch = c(rep(19, 3), 19,19, 15,15, NA,NA,NA,NA),
-       pt.cex = c(10,10,10,15,10,15,10,NA,NA,NA,NA),
-       lwd = c(rep(NA,7), 10, 10,10,10),
-       cex = 9, ncol = 3,
-       # inset = c(-0.4, 0), xpd = NA,
-       y.intersp = 1, x.intersp = 3)
-dev.off()
 
-jpeg('results/plotNetworkNoLegend.jpeg', width = 180, height = 180, units = 'cm', res = 300)
-par(mfrow = c(1,1))
-plot(net, vertex.size = V(net)$size, edge.color = E(net)$color, vertex.shape = V(net)$shape, #edge.lty = E(net)$lty,
-     vertex.label = '', layout=layout.fruchterman.reingold,
-     vertex.label.cex = 1.2, edge.arrow.size = 1)
-dev.off()   
+legend(x = "center", 
+       legend = c(">18y", "12-17y", "<12y", 
+                  "male miner", "male other", "female sexworker", "female other",
+                  "HH non-sexual", "HH sexual", "non-HH sexual", "non-HH non-sexual"),
+       col = c("#B569DB", "#2A9832", "#F39110", rep('black', 4), "red","black","green","blue"),
+       pch = c(19,19,19, 19,19, 15,15, NA, NA, NA, NA),
+       pt.cex = c(1.2, 1.2, 1.2, 1.5, 1.2, 1.5, 1.2, NA, NA, NA, NA),
+       lty = c(rep(NA,7), 1,1,1,1),
+       lwd = c(rep(NA,7), 2, 2, 2, 2),
+       cex = 1.0,
+       ncol = 3,
+       bty = "n",
+       y.intersp = 1.2, x.intersp = 1.2)
+
+dev.off()
+# ----------------------------------------
+

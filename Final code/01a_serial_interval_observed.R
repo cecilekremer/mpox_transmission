@@ -2,13 +2,14 @@
 library(dplyr)
 library(tidyr)
 
-setwd('./Final code/')
+# setwd('./Final code/')
 
 
 ###------------------------------------------------------------
 ### GOMA
 
-load('data/contact_data_ALL_100325.RData')
+# load('data/contact_data_ALL_100325.RData')
+load('./Final code/data/contact_data.RData')
 dataGM <- data.all[!is.na(data.all$ID_code), ]
 table(dataGM$contact_mpox) # 1 = yes
 sum(dataGM$contacts != "")
@@ -24,7 +25,7 @@ sum(!is.na(dataGM$symptom.onset))
 ###------------------------------------------------------------
 ### KAMITUGA
 
-load('data/contact_data_100325.RData')
+load('./Final code/data/contact_data_all.RData')
 data <- data.contact.clean
 
 table(data$contact_mpox) # 1 = yes
@@ -110,7 +111,8 @@ sum(data.si$serial.interval < 0)
 table(data.si$sexual) # 1 = sexual, 2 = non-sexual
 table(data.si$sexual[data.si$serial.interval<0])
 
-# save(data.si, file = 'data_obs_SI.RData')
+# data.si.id <- data.si[,c("ID","contacts")]
+# save(data.si.id, file = './Final code/data/data_obs_SI.RData')
 
 table(data.si$sexual, data.si$n.lesion.genital)
 table(data.si$n.lesion.genital[is.na(data.si$sexual)])
@@ -323,6 +325,22 @@ fitNonSexual <- estimSI(x = xNonSexual)
 
 round(fitSexual$npestim, 2)
 round(fitNonSexual$npestim, 2)
+
+###--------------------------------------------------
+### Gender
+
+xMale <- data.frame(sL = data.si$serial.interval[data.si$gender == 1] - 0.5,
+                      sR = data.si$serial.interval[data.si$gender == 1] + 0.5)
+set.seed(2022)
+fitMale <- estimSI(x = xMale)
+
+xFemale <- data.frame(sL = data.si$serial.interval[data.si$gender == 2] - 0.5,
+                         sR = data.si$serial.interval[data.si$gender == 2] + 0.5)
+set.seed(2022)
+fitFemale <- estimSI(x = xFemale)
+
+round(fitMale$npestim, 2)
+round(fitFemale$npestim, 2)
 
 ###--------------------------------------------------
 ### Time between symptom onset and rash

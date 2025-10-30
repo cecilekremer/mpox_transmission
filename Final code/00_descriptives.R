@@ -1,5 +1,5 @@
 
-load('./data/contact_data_ALL_100325.RData')
+load('./Final code/data/contact_data.RData')
 
 summary(data.all$date)
 
@@ -17,9 +17,9 @@ ggplot(data = data.all, aes(x = agenum)) +
   # geom_density(color = 'darkred', size = 1) + # only if usiing geom_histogram(aes(y = ...density...))
   scale_x_continuous(breaks = c(0,5,12,18,30,40,50,60,70,80)) +
   geom_vline(xintercept = c(12, 18), color = 'red', linetype = "dashed", size = 1) +
-  xlab('Age (years)') + ylab('Number of participants') +
+  xlab('Age (years)') + ylab('Relative frequency') +
   theme_minimal(base_size = 14)
-ggsave('./Final code/results/FigureS1.jpeg', width = 30, height = 20, units = 'cm', dpi = 300)
+# ggsave('./Final code/results/FigureS1.jpeg', width = 30, height = 20, units = 'cm', dpi = 300)
 
 ##-----------------------------------
 ## Sexual behavior
@@ -37,11 +37,13 @@ sum(data.all$agenum[data.all$intercourse_SW==1] < 15, na.rm = T)
 
 ##-----------------------------------
 ## Occupation
-load('./data/clean_data_100325.RData') # Kamituga
-data_KT <- data
-data_KT <- data_KT[data_KT$visit == 'baseline', ] # only including baseline visit
-load('./data/clean_data_Goma_100325.RData') # Goma
-data_GM <- data
+# load('./data/clean_data_100325.RData') # Kamituga
+load('./Final code/data/data_KT.RData')
+data_KT <- data_Kamituga
+# data_KT <- data_KT[data_KT$visit == 'baseline', ] # only including baseline visit
+# load('./data/clean_data_Goma_100325.RData') # Goma
+load('./Final code/data/data_GM.RData')
+data_GM <- data_Goma
 
 table(data_KT$occupation_prim)
 # 1=HCW, 2=traditional patrician, 3=SW, 4=mine worker, 5=barman, 6=hunter, 7=fisherman, 8=farmer, 9=trader, 10=biker

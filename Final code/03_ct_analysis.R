@@ -1,5 +1,6 @@
 
-load('./data/CT_data_230525.RData')
+# load('./data/CT_data_230525.RData')
+load('./Final code/data/ct_data.RData')
 names(ct_all)
 length(unique(ct_all$isac)); sum(grepl('SCREEN', ct_all$isac)) # Kamituga cases
 table(ct_all$site)
@@ -23,13 +24,13 @@ hist(ct_pos$Ct.value[ct_pos$site == 'Goma'], breaks = 20, main = '', xlab = 'OPX
 
 ###-----------------------------------------------------------------
 ### Based on rash onset
-load('./data/clean_data_Goma_100325.RData')
-data_Goma <- data
+load('./Final code/data/data_GM.RData')
+data_Goma <- data_Goma
 data_Goma$rash_onset <- as.Date(data_Goma$dtenqt) - data_Goma$dptemps
 data_Goma$isac <- data_Goma$record_id
 summary(data_Goma$rash_onset)
-load('./data/clean_data_100325.RData')
-data_Kamituga <- data[data$visit == 'baseline', ]
+load('./Final code/data/data_KT.RData')
+# data_Kamituga <- data_Kamituga[data_Kamituga$visit == 'baseline', ]
 data_Kamituga$rash_onset <- as.Date(data_Kamituga$dtenqt) - data_Kamituga$dptemps
 summary(data_Kamituga$rash_onset)
 
@@ -107,6 +108,7 @@ ct_ids <- ct_pos[grepl('SCREEN', ct_pos$isac), ]
 ct_ids$IDnum <- as.numeric(unlist(regmatches(ct_ids$isac, gregexpr("[0-9]+", ct_ids$isac))))
 load('./Final code/data/data_obs_SI.RData')
 # remove duplicate
+data.si <- data.si.id
 data.si <- data.si[-which(data.si$ID==839)[1], ]
 dim(data.si)
 
@@ -129,7 +131,7 @@ sum(ct_ids$IDnum %in% data.si$contacts)
 ###------------------------------------------------------------------------------------
 ### Cases included in incubation period estimation?
 
-load("ids_incubation.RData")
+load("./Final code/data/ids_incubation.RData")
 sum(ids.incubation %in% ct_pos$isac)
 sum(ct_pos$isac %in% ids.incubation)
 

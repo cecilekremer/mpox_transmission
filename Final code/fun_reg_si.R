@@ -53,13 +53,13 @@ estimate_si_reg <- function(case.ids,
       if(length(c) == 0){
         id.orig <- data$ID_orig[data$ID == i]
         c <- which(as.numeric(unlist(strsplit(data$contacts[inf.id], ","))) == id.orig)
-        hh.trans[i] <- ifelse(data[inf.id, 58 + c] == 1 & !is.na(data[inf.id, 58 + c]), 1, 0)
+        hh.trans[i] <- ifelse(data[inf.id, 31 + c] == 1 & !is.na(data[inf.id, 31 + c]), 1, 0)
         # sex.trans[i] <- ifelse(data[inf.id, 82 + c] == 1 & !is.na(data[inf.id, 82 + c]), 1, 0) # Scenario 2
-        sex.trans[i] <- ifelse((is.na(data[inf.id, 82 + c]) & data[inf.id, 58 + c] %in% c(1,2)) | (!is.na(data[inf.id, 82 + c]) & data[inf.id, 82 + c] == 2), 0, 1) # Scenario 1
+        sex.trans[i] <- ifelse((is.na(data[inf.id, 39 + c]) & data[inf.id, 31 + c] %in% c(1,2)) | (!is.na(data[inf.id, 39 + c]) & data[inf.id, 39 + c] == 2), 0, 1) # Scenario 1
       }else{
-        hh.trans[i] <- ifelse(data[i, 58 + c] == 1 & !is.na(data[i, 58 + c]), 1, 0)
+        hh.trans[i] <- ifelse(data[i, 31 + c] == 1 & !is.na(data[i, 31 + c]), 1, 0)
         # sex.trans[i] <- ifelse(data[i, 82 + c] == 1 & !is.na(data[i, 82 + c]), 1, 0) # Scenario 2
-        sex.trans[i] <- ifelse((is.na(data[i, 82 + c]) & data[i, 58 + c] %in% c(1,2)) | (!is.na(data[i, 82 + c]) & data[i, 82 + c] == 2), 0, 1) # Scenario 1
+        sex.trans[i] <- ifelse((is.na(data[i, 39 + c]) & data[i, 31 + c] %in% c(1,2)) | (!is.na(data[i, 39 + c]) & data[i, 39 + c] == 2), 0, 1) # Scenario 1
       }
     }
   }
@@ -187,13 +187,13 @@ estimate_si_reg <- function(case.ids,
           if(length(c) == 0){
             id.orig <- data$ID_orig[data$ID == i]
             c <- which(as.numeric(unlist(strsplit(data$contacts[inf.id], ","))) == id.orig)
-            hh.trans[i] <- ifelse(data[inf.id, 58 + c] == 1 & !is.na(data[inf.id, 58 + c]), 1, 0)
+            hh.trans[i] <- ifelse(data[inf.id, 31 + c] == 1 & !is.na(data[inf.id, 31 + c]), 1, 0)
             # sex.trans[i] <- ifelse(data[inf.id, 82 + c] == 1 & !is.na(data[inf.id, 82 + c]), 1, 0) # Scenario 2
-            sex.trans[i] <- ifelse((is.na(data[inf.id, 82 + c]) & data[inf.id, 58 + c] %in% c(1,2)) | (!is.na(data[inf.id, 82 + c]) & data[inf.id, 82 + c] == 2), 0, 1) # Scenario 1
+            sex.trans[i] <- ifelse((is.na(data[inf.id, 39 + c]) & data[inf.id, 31 + c] %in% c(1,2)) | (!is.na(data[inf.id, 39 + c]) & data[inf.id, 39 + c] == 2), 0, 1) # Scenario 1
           }else{
-            hh.trans[i] <- ifelse(data[i, 58 + c] == 1 & !is.na(data[i, 58 + c]), 1, 0)
+            hh.trans[i] <- ifelse(data[i, 31 + c] == 1 & !is.na(data[i, 31 + c]), 1, 0)
             # sex.trans[i] <- ifelse(data[i, 82 + c] == 1 & !is.na(data[i, 82 + c]), 1, 0) # Scenario 2
-            sex.trans[i] <- ifelse((is.na(data[i, 82 + c]) & data[i, 58 + c] %in% c(1,2)) | (!is.na(data[i, 82 + c]) & data[i, 82 + c] == 2), 0, 1) # Scenario 1
+            sex.trans[i] <- ifelse((is.na(data[i, 39 + c]) & data[i, 31 + c] %in% c(1,2)) | (!is.na(data[i, 39 + c]) & data[i, 39 + c] == 2), 0, 1) # Scenario 1
           }
         }
       }

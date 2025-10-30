@@ -45,7 +45,7 @@
 
 
 ## Data containing one row for each case x contact x exposure
-load('./data/contact_data_ALL_100325.RData')
+load('./Final code/data/contact_data.RData')
 data <- data.all
 dim(data); length(unique(data$ID2))
 
@@ -64,7 +64,7 @@ summary(data$contact1_lastcontact)
 data <- data[!is.na(data$contact1_lastcontact) | !is.na(data$contact2_lastcontact) | !is.na(data$contact3_lastcontact) | !is.na(data$contact4_lastcontact), ]
 ## Remove case if all last known exposures are after symptom onset
 data <- data[(data$contact1_lastcontact <= data$symptom.onset) | (data$contact2_lastcontact <= data$symptom.onset) |
-               (data$contact3_lastcontact <= data$symptom.onset) | (data$contact3_lastcontact <= data$symptom.onset), ]
+               (data$contact3_lastcontact <= data$symptom.onset) | (data$contact4_lastcontact <= data$symptom.onset), ]
 # Remove ???
 data <- data[!is.na(data$ID2), ]
 dim(data); length(unique(data$ID2))
@@ -217,7 +217,8 @@ data_stan <- list(
   incl_cov = 2, # 1 = overall (no covariate), 2 = include two-level covariate
   # sexual = ifelse(df_longg$sexual1 == 2, 0, 1) # 1 = sexual, 0 = non-sexual
   # sexual = ifelse(df_longg$agecat == 3, 0, 1) # 0 = child, 1 = adult
-  sexual = ifelse(df_longg$agenum < 15, 0, 1)
+  # sexual = ifelse(df_longg$agenum < 15, 0, 1)
+  sexual = ifelse(df_longg$gender == 1, 0, 1) # 0 = male, 1 = female
 )
 
 # mod_estIncub <- rstan::stan_model('./Final code/stan_incub_ward.stan', model_name = 'mod_estIncub')
